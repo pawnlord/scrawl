@@ -18,12 +18,13 @@ int main(int argc, char** argv){
 		clear_str(line, MAX_LINE_LENGTH);
 		start_parser();
 		printf("This is simple crappy resource intensive potential trainwreck script (scripts)\nversion 1.0.0 - type help for general commands\n");
+		
 		printf("%s", prompt);
 		fgets(line, MAX_LINE_LENGTH, stdin);
-		
-		printf("%s\n", ((char*)parse(line)));
+		variable rv;
+		parse(line, &rv);
+		printf("%s\n", rv.identifier);
 		
 		free(line);
-		printf("owo\n");
 	}
 }

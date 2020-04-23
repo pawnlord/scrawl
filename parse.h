@@ -4,45 +4,34 @@ typedef enum {
 } format;
 
 typedef enum {
+	NUL = 0,
 	INT8 = 8, INT16 = 16,
-	INT32 = 32, POINTER = sizeof(void*)
+	INT32 = 32, INT64 = 64,
+	POINTER = sizeof(void*)
 } type;
 
 typedef struct {
 	char* identifier;
-	void* location;
-} variable;
-
-typedef struct {
-	char* identifier;
 	void* value;
-} constant;
-
-typedef struct {
-	variable*  vars;
-	constant* cons;
-} state;
+	type t;
+} variable;
 
 typedef struct {
 	char** keywords;
 	int keyword_num;
-	char** consts;
-	int const_num;
-	char** vars;
-	int var_num;
 	format f;
 	char   inited;
 } line_structure;
 
-state  master_state;
-state  temp_state;
-state* state_stack;
-int current_state;
-
+typedef struct {
+	variable*  vars;
+	int var_num;
+	variable* cons;
+	int cons_num;
+} state;
 
 int   start_parser();
 
-void* parse(char* line);
-
+void  parse(char* line, variable* return_value);
 
 int   push_back_master_state();

@@ -4,7 +4,12 @@
 #include "parse.h"
 #define STR_SIZE 255
 #define STRPTR_SIZE 255
-line_structure ls;
+
+state  master_state;
+state  temp_state;
+state* state_stack;
+int current_state;
+
 int allocate_strptr(char*** strptr, int dim1, int dim2){
 	(*strptr) = malloc(dim1);
 	if((*strptr) == NULL){
@@ -30,40 +35,100 @@ void clear_strptr(char*** strptr) {
 	}
 }
 
+void init_variable(variable* var, int name_size){
+	var->identifier = malloc(name_size);
+	
+	for(int i = 0; i < name_size; i++){
+		var->identifier[i] = 0;
+	}
+	var->t = NUL;
+}
+
+int isnum(char c){
+	static const char* numeric = "1234567890";
+	return strchr(numeric, c) != NULL;
+}
+
+int create_onthefly_variable(variable* v){
+	if(isnum(v->identifier[0])){
+		v->value = (void*)atoi(v->identifier);
+		if((int)v->value <= 255) v->t = INT8;
+		else if((int)v->value <= 255*sizeof(int)){ 
+			if(sizeof(int) == 8) {
+				v->t = INT64;
+			} else{
+				v->t = INT32;
+			}
+		} else{
+			printf("SizeError: Number To Big!");
+		}
+		return 1;
+	}
+	return 0;
+}
+
+void initialize_states(int max_varnum, int max_connum){
+	master_state.vars = malloc(max_varnum*sizeof(variable));
+	for(int i = 0; i < max_varnum; i++){
+		init_variable(&master_state.vars[i], STR_SIZE);
+	}
+	master_state.cons = malloc(max_connum*sizeof(variable));
+	for(int i = 0; i < max_varnum; i++){
+		init_variable(&master_state.cons[i], STR_SIZE);
+	}
+}
+
 void init_ls(line_structure* ls) {
 	allocate_strptr(&(ls->keywords), STRPTR_SIZE, STR_SIZE);
-	allocate_strptr(&(ls->consts), STRPTR_SIZE, STR_SIZE);
-	allocate_strptr(&(ls->vars), STRPTR_SIZE, STR_SIZE);
+	ls->keyword_num = 0;
 	ls->inited = 1;
+	initialize_states(255, 255);
 }
 
 int start_parser() {
-	init_ls(&ls);
+	initialize_states(STRPTR_SIZE, STRPTR_SIZE);
 }
 
 void reset_ls(line_structure* ls) {
 	clear_strptr(&(ls->keywords));
-	clear_strptr(&(ls->consts));
-	clear_strptr(&(ls->vars));
 }
 
-void* parse(char* line) {
+int str_in_varlist(char* str, variable* list){
+	for(int i = 0; strcmp(list[i].identifier, ""); i++){
+		if(strcmp(list[i].identifier, str) == 0){
+			return i;
+		}
+	}
+	return -1;
+}
+
+void parse(char* line, variable* return_value) {
+	/* things we need to remember */
 	static int   indentation_unit = 0;
 	static int   last_indentation = 0;
-	static char* alphanumeric = "qwertyuiopasdfghjklzxcvbnm1234567890_";
-	static char* whitespace = " \t\n";
+	/* constant strings */
+	static const char* alphanumeric = "qwertyuiopasdfghjklzxcvbnm1234567890_";
+	static const char* symbols = "!@#$%^&*()-=+{}[]\\;:'\".,";
+	static const char* whitespace = " \t\n";
+	line_structure ls;
+	init_ls(&ls);
+	/* default return flag */
+	int default_val = 1;
+	/* current indentation */
 	int indentation = 0;
 	
+	/* token we are reading */
 	char* current_token = malloc(100);
-		
+	/* clear it */	
 	for(int i = 0; i < 100; i++) {
 		current_token[i] = 0;
 	}
-	reset_ls(&ls);
+	
 	char ct_counter = 0;
 	char line_started = 0;
+	init_variable(return_value, 100);
+	
 	for(int i = 0; line[i] != 0; i++) {
-		//printf("%d, %s, %s, %c: %d, %d, %d\n", i, alphanumeric, whitespace, line[i], strchr(alphanumeric, line[i]), strchr(whitespace, line[i]), line_started  );
 		if(strchr(alphanumeric, line[i]) != NULL) {
 			current_token[ct_counter] = line[i];
 			
@@ -78,13 +143,71 @@ void* parse(char* line) {
 			indentation += 1;
 		} else if(strchr(whitespace, line[i]) != NULL && line_started && strcmp(current_token, "")) {
 			strcpy(ls.keywords[ls.keyword_num], current_token);
-			printf("%s=%s\n", ls.keywords[ls.keyword_num], current_token);
+			ls.keyword_num++;
+			
+			for(int j = 0; j < 100; j++) {
+				current_token[j] = 0;
+			}
+		
+			ct_counter = 0;
+		} else if(strchr(symbols, line[i]) != NULL ){
+			/* syntax error if the line hasn't started. this shouldn't happen */
+			if(!line_started){
+				exit(EXIT_FAILURE);
+			}
+			/* symbols also act as whitespace */
+			strcpy(ls.keywords[ls.keyword_num], current_token);
+			ls.keyword_num++;
+			
 			for(int j = 0; j < 100; j++) {
 				current_token[j] = 0;
 			}
 			ct_counter = 0;
-			ls.keyword_num++;
+			
+			/* actual functionality */
+			if(line[i] == '+'){
+				variable rtemp;
+				parse(line+i+1, &rtemp);
+				if(rtemp.t != INT8 && rtemp.t != INT16 && rtemp.t != INT32){
+					printf("TypeError: invalid rval of '+' operator %s of type %d\n", rtemp.identifier, rtemp.t);
+					exit(EXIT_FAILURE);
+				}
+				int type; // 0: const, 1: variable
+				if(strcmp(ls.keywords[0], "") && default_val) {
+					strcpy(return_value->identifier, ls.keywords[0]);
+					int pointer;
+					if((pointer = str_in_varlist(return_value->identifier, master_state.vars)) != -1) {
+						/* ^ check through variables */
+						return_value->value =  master_state.vars[pointer].value;
+						return_value->t =  master_state.vars[pointer].t;
+					} else if((pointer = str_in_varlist(return_value->identifier, master_state.cons)) != -1) {
+						/* ^ check through constants */
+						return_value->value =  master_state.cons[pointer].value;
+						return_value->t =  master_state.cons[pointer].t;
+					} else {
+						create_onthefly_variable(return_value);
+					}
+				}
+				sprintf(return_value->identifier, "%d", (int)return_value->value + (int)rtemp.value);
+				return_value->value = (void*)((int)rtemp.value + (int)return_value->value);
+				default_val = 0;
+			}
 		}
 	}
-	return ls.keywords[1];
+	/* find value of keyword */
+	if(strcmp(ls.keywords[0], "") && default_val) {
+		strcpy(return_value->identifier, ls.keywords[0]);
+		int pointer;
+		if((pointer = str_in_varlist(return_value->identifier, master_state.vars)) != -1) {
+			/* ^ check through variables */
+			return_value->value =  master_state.vars[pointer].value;
+			return_value->t =  master_state.vars[pointer].t;
+		} else if((pointer = str_in_varlist(return_value->identifier, master_state.cons)) != -1) {
+			/* ^ check through constants */
+			return_value->value =  master_state.cons[pointer].value;
+			return_value->t =  master_state.cons[pointer].t;
+		} else {
+			create_onthefly_variable(return_value);
+		}
+	} 
 }
