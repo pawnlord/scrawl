@@ -24,7 +24,7 @@ int main(int argc, char** argv){
 			printf("%s", prompt);
 			fgets(line, MAX_LINE_LENGTH, stdin);
 			variable rv;
-			parse(line, &rv);
+			parse(line, &rv, 0);
 			if(rv.t == INT8 || rv.t == INT16 || rv.t == INT32 || rv.t == INT64){
 				printf("%d\n", rv.value);
 			}

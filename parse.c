@@ -105,7 +105,7 @@ int str_in_varlist(char* str, variable* list){
 	return -1;
 }
 
-void parse(char* line, variable* return_value) {
+void parse(char* line, variable* return_value, int stop_at_symbol) {
 	/* things we need to remember */
 	static int   indentation_unit = 0;
 	static int   last_indentation = 0;
@@ -154,100 +154,152 @@ void parse(char* line, variable* return_value) {
 			}
 		
 			ct_counter = 0;
-		} else if(strchr(symbols, line[i]) != NULL ){
+		} else if(strchr(symbols, line[i]) != NULL && !stop_at_symbol){
 			/* syntax error if the line hasn't started. this shouldn't happen */
 			if(!line_started){
-				exit(EXIT_FAILURE);
+				if(line[i] == '-'){
+					variable rtemp;
+					parse(line+i+1, &rtemp, 1);
+					if(rtemp.t != INT8 && rtemp.t != INT16 && rtemp.t != INT32){
+						printf("TypeError: invalid rval of '-' operator %s (%d) of type %d (needs to be int)\n", rtemp.identifier, rtemp.value, rtemp.t);
+						return_value->value = 0;
+						return_value->t  = 0;
+						default_val = 0;
+						break;	
+					}
+					sprintf(return_value->identifier, "%d", -((int)rtemp.value));
+					return_value->value = (void*)(-((int)rtemp.value));
+					return_value->t = INT32;
+					default_val = 0;
+				}
+			} else {
+				if(strcmp(current_token, "")){
+					/* symbols also act as whitespace */
+					strcpy(ls.keywords[ls.keyword_num], current_token);
+					ls.keyword_num++;
+				}
+				for(int j = 0; j < 100; j++) {
+					current_token[j] = 0;
+				}
+				ct_counter = 0;
+				
+				/* actual functionality */
+				if(line[i] == '+'){
+					variable rtemp;
+					parse(line+i+1, &rtemp, 0);
+					if(rtemp.t != INT8 && rtemp.t != INT16 && rtemp.t != INT32){
+						printf("TypeError: invalid rval of '+' operator %s of type %d (needs to be int)\n", rtemp.identifier, rtemp.t);
+						return_value->value = 0;
+						return_value->t  = 0;
+						default_val = 0;
+						break;	
+					}
+					if(strcmp(ls.keywords[0], "") && default_val) {
+						strcpy(return_value->identifier, ls.keywords[0]);
+						int pointer;
+						if((pointer = str_in_varlist(return_value->identifier, master_state.vars)) != -1) {
+							/* ^ check through variables */
+							return_value->value =  master_state.vars[pointer].value;
+							return_value->t =  master_state.vars[pointer].t;
+						} else if((pointer = str_in_varlist(return_value->identifier, master_state.cons)) != -1) {
+							/* ^ check through constants */
+							return_value->value =  master_state.cons[pointer].value;
+							return_value->t =  master_state.cons[pointer].t;
+						} else {
+							create_onthefly_variable(return_value);
+						}
+					}
+					sprintf(return_value->identifier, "%d", (int)return_value->value + (int)rtemp.value);
+					return_value->value = (void*)((int)rtemp.value + (int)return_value->value);
+					default_val = 0;
+					break;
+				}
+				if(line[i] == '-'){
+					variable rtemp;
+					parse(line+i+1, &rtemp, 0);
+					if(rtemp.t != INT8 && rtemp.t != INT16 && rtemp.t != INT32){
+						printf("TypeError: invalid rval of '-' operator %s of type %d (needs to be int)\n", rtemp.identifier, rtemp.t);
+						return_value->value = 0;
+						return_value->t  = 0;
+						default_val = 0;
+						break;	
+					}
+					if(strcmp(ls.keywords[0], "") && default_val) {
+						strcpy(return_value->identifier, ls.keywords[0]);
+						int pointer;
+						if((pointer = str_in_varlist(return_value->identifier, master_state.vars)) != -1) {
+							/* ^ check through variables */
+							return_value->value =  master_state.vars[pointer].value;
+							return_value->t =  master_state.vars[pointer].t;
+						} else if((pointer = str_in_varlist(return_value->identifier, master_state.cons)) != -1) {
+							/* ^ check through constants */
+							return_value->value =  master_state.cons[pointer].value;
+							return_value->t =  master_state.cons[pointer].t;
+						} else {
+							create_onthefly_variable(return_value);
+						}
+					}
+					sprintf(return_value->identifier, "%d", (int)return_value->value - (int)rtemp.value);
+					return_value->value = (void*)((int)return_value->value - (int)rtemp.value);
+					default_val = 0;
+					break;
+				}
+				if(line[i] == '='){
+					variable rtemp;
+					parse(line+i+1, &rtemp, 0);
+					if(rtemp.t != INT8 && rtemp.t != INT16 && rtemp.t != INT32){
+						printf("TypeError: invalid rval of '=' operator %s of type %d\n", rtemp.identifier, rtemp.t);
+						return_value->value = 0;
+						return_value->t  = 0;
+						default_val = 0;
+						break;	
+					}
+					if(ls.keyword_num > 1){
+						printf("TypeError: invalid lval of '=' operator (cannot have multiple)\n", rtemp.identifier, rtemp.t);
+						return_value->value = 0;
+						return_value->t  = 0;
+						default_val = 0;
+						break;	
+					}
+					if(strcmp(ls.keywords[0], "") && default_val) {
+						strcpy(return_value->identifier, ls.keywords[0]);
+						int pointer;
+						
+						if((pointer = str_in_varlist(return_value->identifier, master_state.vars)) != -1) {
+							/* ^ check through variables */
+							/* we found one, copy new value */
+							master_state.vars[pointer].value = rtemp.value;
+							master_state.vars[pointer].t = rtemp.t;
+							return_value->value = rtemp.value;
+							return_value->t  = rtemp.t;
+						} else if((pointer = str_in_varlist(return_value->identifier, master_state.cons)) != -1 ||
+								create_onthefly_variable(return_value)) {
+							printf("TypeError: invalid lval of '=' operator (cannot be constant)\n", rtemp.identifier, rtemp.t);
+							
+							return_value->value = 0;
+							return_value->t  = 0;
+							default_val = 0;
+							break;	
+						} else {
+							strcpy(master_state.vars[master_state.var_num].identifier, return_value->identifier);
+							master_state.vars[master_state.var_num].value = rtemp.value;
+							master_state.vars[master_state.var_num].t = rtemp.t;
+							return_value->value = rtemp.value;
+							return_value->t  = rtemp.t;
+							master_state.var_num+=1;
+						}
+					}
+					default_val = 0;
+					break;
+				}
 			}
+		} else if(strchr(symbols, line[i]) != NULL && stop_at_symbol) {
 			if(strcmp(current_token, "")){
 				/* symbols also act as whitespace */
 				strcpy(ls.keywords[ls.keyword_num], current_token);
 				ls.keyword_num++;
 			}
-			for(int j = 0; j < 100; j++) {
-				current_token[j] = 0;
-			}
-			ct_counter = 0;
-			
-			/* actual functionality */
-			if(line[i] == '+'){
-				variable rtemp;
-				parse(line+i+1, &rtemp);
-				if(rtemp.t != INT8 && rtemp.t != INT16 && rtemp.t != INT32){
-					printf("TypeError: invalid rval of '+' operator %s of type %d (needs to be int)\n", rtemp.identifier, rtemp.t);
-					return_value->value = 0;
-					return_value->t  = 0;
-					default_val = 0;
-					break;	
-				}
-				if(strcmp(ls.keywords[0], "") && default_val) {
-					strcpy(return_value->identifier, ls.keywords[0]);
-					int pointer;
-					if((pointer = str_in_varlist(return_value->identifier, master_state.vars)) != -1) {
-						/* ^ check through variables */
-						return_value->value =  master_state.vars[pointer].value;
-						return_value->t =  master_state.vars[pointer].t;
-					} else if((pointer = str_in_varlist(return_value->identifier, master_state.cons)) != -1) {
-						/* ^ check through constants */
-						return_value->value =  master_state.cons[pointer].value;
-						return_value->t =  master_state.cons[pointer].t;
-					} else {
-						create_onthefly_variable(return_value);
-					}
-				}
-				sprintf(return_value->identifier, "%d", (int)return_value->value + (int)rtemp.value);
-				return_value->value = (void*)((int)rtemp.value + (int)return_value->value);
-				default_val = 0;
-				break;
-			}
-			if(line[i] == '='){
-				variable rtemp;
-				parse(line+i+1, &rtemp);
-				if(rtemp.t != INT8 && rtemp.t != INT16 && rtemp.t != INT32){
-					printf("TypeError: invalid rval of '=' operator %s of type %d\n", rtemp.identifier, rtemp.t);
-					return_value->value = 0;
-					return_value->t  = 0;
-					default_val = 0;
-					break;	
-				}
-				if(ls.keyword_num > 1){
-					printf("TypeError: invalid lval of '=' operator (cannot have multiple)\n", rtemp.identifier, rtemp.t);
-					return_value->value = 0;
-					return_value->t  = 0;
-					default_val = 0;
-					break;	
-				}
-				if(strcmp(ls.keywords[0], "") && default_val) {
-					strcpy(return_value->identifier, ls.keywords[0]);
-					int pointer;
-					
-					if((pointer = str_in_varlist(return_value->identifier, master_state.vars)) != -1) {
-						/* ^ check through variables */
-						/* we found one, copy new value */
-						master_state.vars[pointer].value = rtemp.value;
-						master_state.vars[pointer].t = rtemp.t;
-						return_value->value = rtemp.value;
-						return_value->t  = rtemp.t;
-					} else if((pointer = str_in_varlist(return_value->identifier, master_state.cons)) != -1 ||
-							create_onthefly_variable(return_value)) {
-						printf("TypeError: invalid lval of '=' operator (cannot be constant)\n", rtemp.identifier, rtemp.t);
-						
-						return_value->value = 0;
-						return_value->t  = 0;
-						default_val = 0;
-						break;	
-					} else {
-						strcpy(master_state.vars[master_state.var_num].identifier, return_value->identifier);
-						master_state.vars[master_state.var_num].value = rtemp.value;
-						master_state.vars[master_state.var_num].t = rtemp.t;
-						return_value->value = rtemp.value;
-						return_value->t  = rtemp.t;
-						master_state.var_num+=1;
-					}
-				}
-				default_val = 0;
-				break;
-			}
+			break;
 		}
 	}
 	/* find value of keyword */

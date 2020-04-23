@@ -32,6 +32,6 @@ typedef struct {
 
 int   start_parser();
 
-void  parse(char* line, variable* return_value);
+void  parse(char* line, variable* return_value, int stop_at_symbol);
 
 int   push_back_master_state();
