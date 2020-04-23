@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include "parse.h"
 #define STR_SIZE 255
 #define STRPTR_SIZE 255
@@ -53,14 +54,15 @@ int create_onthefly_variable(variable* v){
 	if(isnum(v->identifier[0])){
 		v->value = (void*)atoi(v->identifier);
 		if((int)v->value <= 255) v->t = INT8;
-		else if((int)v->value <= 255*sizeof(int)){ 
+		else if((int)v->value <= pow(2, (sizeof(int)*8)+1)){ 
 			if(sizeof(int) == 8) {
 				v->t = INT64;
 			} else{
 				v->t = INT32;
 			}
 		} else{
-			printf("SizeError: Number To Big!");
+			printf("SizeError: Number To Big! %d %d\n", (int)pow(2, (sizeof(int)*8)+1) , sizeof(int));
+			exit(EXIT_FAILURE);
 		}
 		return 1;
 	}
@@ -76,13 +78,14 @@ void initialize_states(int max_varnum, int max_connum){
 	for(int i = 0; i < max_varnum; i++){
 		init_variable(&master_state.cons[i], STR_SIZE);
 	}
+	master_state.var_num = 0;
+	master_state.con_num = 0;
 }
 
 void init_ls(line_structure* ls) {
 	allocate_strptr(&(ls->keywords), STRPTR_SIZE, STR_SIZE);
 	ls->keyword_num = 0;
 	ls->inited = 1;
-	initialize_states(255, 255);
 }
 
 int start_parser() {
@@ -123,6 +126,7 @@ void parse(char* line, variable* return_value) {
 	for(int i = 0; i < 100; i++) {
 		current_token[i] = 0;
 	}
+					
 	
 	char ct_counter = 0;
 	char line_started = 0;
@@ -155,10 +159,11 @@ void parse(char* line, variable* return_value) {
 			if(!line_started){
 				exit(EXIT_FAILURE);
 			}
-			/* symbols also act as whitespace */
-			strcpy(ls.keywords[ls.keyword_num], current_token);
-			ls.keyword_num++;
-			
+			if(strcmp(current_token, "")){
+				/* symbols also act as whitespace */
+				strcpy(ls.keywords[ls.keyword_num], current_token);
+				ls.keyword_num++;
+			}
 			for(int j = 0; j < 100; j++) {
 				current_token[j] = 0;
 			}
@@ -169,10 +174,12 @@ void parse(char* line, variable* return_value) {
 				variable rtemp;
 				parse(line+i+1, &rtemp);
 				if(rtemp.t != INT8 && rtemp.t != INT16 && rtemp.t != INT32){
-					printf("TypeError: invalid rval of '+' operator %s of type %d\n", rtemp.identifier, rtemp.t);
-					exit(EXIT_FAILURE);
+					printf("TypeError: invalid rval of '+' operator %s of type %d (needs to be int)\n", rtemp.identifier, rtemp.t);
+					return_value->value = 0;
+					return_value->t  = 0;
+					default_val = 0;
+					break;	
 				}
-				int type; // 0: const, 1: variable
 				if(strcmp(ls.keywords[0], "") && default_val) {
 					strcpy(return_value->identifier, ls.keywords[0]);
 					int pointer;
@@ -191,6 +198,55 @@ void parse(char* line, variable* return_value) {
 				sprintf(return_value->identifier, "%d", (int)return_value->value + (int)rtemp.value);
 				return_value->value = (void*)((int)rtemp.value + (int)return_value->value);
 				default_val = 0;
+				break;
+			}
+			if(line[i] == '='){
+				variable rtemp;
+				parse(line+i+1, &rtemp);
+				if(rtemp.t != INT8 && rtemp.t != INT16 && rtemp.t != INT32){
+					printf("TypeError: invalid rval of '=' operator %s of type %d\n", rtemp.identifier, rtemp.t);
+					return_value->value = 0;
+					return_value->t  = 0;
+					default_val = 0;
+					break;	
+				}
+				if(ls.keyword_num > 1){
+					printf("TypeError: invalid lval of '=' operator (cannot have multiple)\n", rtemp.identifier, rtemp.t);
+					return_value->value = 0;
+					return_value->t  = 0;
+					default_val = 0;
+					break;	
+				}
+				if(strcmp(ls.keywords[0], "") && default_val) {
+					strcpy(return_value->identifier, ls.keywords[0]);
+					int pointer;
+					
+					if((pointer = str_in_varlist(return_value->identifier, master_state.vars)) != -1) {
+						/* ^ check through variables */
+						/* we found one, copy new value */
+						master_state.vars[pointer].value = rtemp.value;
+						master_state.vars[pointer].t = rtemp.t;
+						return_value->value = rtemp.value;
+						return_value->t  = rtemp.t;
+					} else if((pointer = str_in_varlist(return_value->identifier, master_state.cons)) != -1 ||
+							create_onthefly_variable(return_value)) {
+						printf("TypeError: invalid lval of '=' operator (cannot be constant)\n", rtemp.identifier, rtemp.t);
+						
+						return_value->value = 0;
+						return_value->t  = 0;
+						default_val = 0;
+						break;	
+					} else {
+						strcpy(master_state.vars[master_state.var_num].identifier, return_value->identifier);
+						master_state.vars[master_state.var_num].value = rtemp.value;
+						master_state.vars[master_state.var_num].t = rtemp.t;
+						return_value->value = rtemp.value;
+						return_value->t  = rtemp.t;
+						master_state.var_num+=1;
+					}
+				}
+				default_val = 0;
+				break;
 			}
 		}
 	}
@@ -199,7 +255,7 @@ void parse(char* line, variable* return_value) {
 		strcpy(return_value->identifier, ls.keywords[0]);
 		int pointer;
 		if((pointer = str_in_varlist(return_value->identifier, master_state.vars)) != -1) {
-			/* ^ check through variables */
+			/* ^ check through variables */	
 			return_value->value =  master_state.vars[pointer].value;
 			return_value->t =  master_state.vars[pointer].t;
 		} else if((pointer = str_in_varlist(return_value->identifier, master_state.cons)) != -1) {

@@ -27,7 +27,7 @@ typedef struct {
 	variable*  vars;
 	int var_num;
 	variable* cons;
-	int cons_num;
+	int con_num;
 } state;
 
 int   start_parser();
