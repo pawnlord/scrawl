@@ -112,6 +112,7 @@ void parse(char* line, variable* return_value, int stop_at_symbol) {
 	/* constant strings */
 	static const char* alphanumeric = "qwertyuiopasdfghjklzxcvbnm1234567890_";
 	static const char* symbols = "!@#$%^&*()-=+{}[]\\;:'\".,";
+	static const char* symbol_priority = "+-*";
 	static const char* whitespace = " \t\n";
 	line_structure ls;
 	init_ls(&ls);
@@ -131,7 +132,7 @@ void parse(char* line, variable* return_value, int stop_at_symbol) {
 	char ct_counter = 0;
 	char line_started = 0;
 	init_variable(return_value, 100);
-	
+
 	for(int i = 0; line[i] != 0; i++) {
 		/* make sure line[i] is alphanumeric */
 		if(strchr(alphanumeric, line[i]) != NULL) {
@@ -195,7 +196,7 @@ void parse(char* line, variable* return_value, int stop_at_symbol) {
 				/* actual functionality */
 				if(line[i] == '+'){
 					variable rtemp;
-					parse(line+i+1, &rtemp, 0);
+					parse(line+i+1, &rtemp, 1);
 					if(rtemp.t != INT8 && rtemp.t != INT16 && rtemp.t != INT32){
 						printf("TypeError: invalid rval of '+' operator %s of type %d (needs to be int)\n", rtemp.identifier, rtemp.t);
 						return_value->value = 0;
@@ -221,11 +222,10 @@ void parse(char* line, variable* return_value, int stop_at_symbol) {
 					sprintf(return_value->identifier, "%d", (int)return_value->value + (int)rtemp.value);
 					return_value->value = (void*)((int)rtemp.value + (int)return_value->value);
 					default_val = 0;
-					break;
 				}
 				if(line[i] == '*'){
 					variable rtemp;
-					parse(line+i+1, &rtemp, 0);
+					parse(line+i+1, &rtemp, 1);
 					if(rtemp.t != INT8 && rtemp.t != INT16 && rtemp.t != INT32){
 						printf("TypeError: invalid rval of '*' operator %s of type %d (needs to be int)\n", rtemp.identifier, rtemp.t);
 						return_value->value = 0;
@@ -251,11 +251,10 @@ void parse(char* line, variable* return_value, int stop_at_symbol) {
 					sprintf(return_value->identifier, "%d", (int)return_value->value * (int)rtemp.value);
 					return_value->value = (void*)((int)rtemp.value * (int)return_value->value);
 					default_val = 0;
-					break;
 				}
 				if(line[i] == '-'){
 					variable rtemp;
-					parse(line+i+1, &rtemp, 0);
+					parse(line+i+1, &rtemp, 1);
 					if(rtemp.t != INT8 && rtemp.t != INT16 && rtemp.t != INT32){
 						printf("TypeError: invalid rval of '-' operator %s of type %d (needs to be int)\n", rtemp.identifier, rtemp.t);
 						return_value->value = 0;
@@ -281,7 +280,6 @@ void parse(char* line, variable* return_value, int stop_at_symbol) {
 					sprintf(return_value->identifier, "%d", (int)return_value->value - (int)rtemp.value);
 					return_value->value = (void*)((int)return_value->value - (int)rtemp.value);
 					default_val = 0;
-					break;
 				}
 				if(line[i] == '='){
 					variable rtemp;
