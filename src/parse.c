@@ -133,19 +133,25 @@ void parse(char* line, variable* return_value, int stop_at_symbol) {
 	init_variable(return_value, 100);
 	
 	for(int i = 0; line[i] != 0; i++) {
+		/* make sure line[i] is alphanumeric */
 		if(strchr(alphanumeric, line[i]) != NULL) {
+			/* copy */
 			current_token[ct_counter] = line[i];
 			
+			/* if the line hasn't started, set indentation unit */
 			if(!line_started){
 				if(indentation_unit == 0){
 					indentation_unit = indentation;
 				}
 			}
+
 			ct_counter++;
 			line_started = 1;
 		} else if(strchr(whitespace, line[i]) != NULL && !line_started) {
+			/* add to indentation*/
 			indentation += 1;
 		} else if(strchr(whitespace, line[i]) != NULL && line_started && strcmp(current_token, "")) {
+			/* add keyword */
 			strcpy(ls.keywords[ls.keyword_num], current_token);
 			ls.keyword_num++;
 			
@@ -155,10 +161,12 @@ void parse(char* line, variable* return_value, int stop_at_symbol) {
 		
 			ct_counter = 0;
 		} else if(strchr(symbols, line[i]) != NULL && !stop_at_symbol){
-			/* syntax error if the line hasn't started. this shouldn't happen */
+			/* symbol found, use it */
+			/* if line hasn't started, do things specific to that*/
 			if(!line_started){
 				if(line[i] == '-'){
 					variable rtemp;
+					/* recursive, check rvalue */
 					parse(line+i+1, &rtemp, 1);
 					if(rtemp.t != INT8 && rtemp.t != INT16 && rtemp.t != INT32){
 						printf("TypeError: invalid rval of '-' operator %s (%d) of type %d (needs to be int)\n", rtemp.identifier, rtemp.value, rtemp.t);
@@ -173,6 +181,7 @@ void parse(char* line, variable* return_value, int stop_at_symbol) {
 					default_val = 0;
 				}
 			} else {
+				/* */
 				if(strcmp(current_token, "")){
 					/* symbols also act as whitespace */
 					strcpy(ls.keywords[ls.keyword_num], current_token);
@@ -248,6 +257,7 @@ void parse(char* line, variable* return_value, int stop_at_symbol) {
 					variable rtemp;
 					parse(line+i+1, &rtemp, 0);
 					if(rtemp.t != INT8 && rtemp.t != INT16 && rtemp.t != INT32){
+						/* rvalue bad, error, set all to zero */
 						printf("TypeError: invalid rval of '=' operator %s of type %d\n", rtemp.identifier, rtemp.t);
 						return_value->value = 0;
 						return_value->t  = 0;
@@ -255,6 +265,7 @@ void parse(char* line, variable* return_value, int stop_at_symbol) {
 						break;	
 					}
 					if(ls.keyword_num > 1){
+						/* too many lvals, set all to zero */
 						printf("TypeError: invalid lval of '=' operator (cannot have multiple)\n", rtemp.identifier, rtemp.t);
 						return_value->value = 0;
 						return_value->t  = 0;
@@ -274,13 +285,16 @@ void parse(char* line, variable* return_value, int stop_at_symbol) {
 							return_value->t  = rtemp.t;
 						} else if((pointer = str_in_varlist(return_value->identifier, master_state.cons)) != -1 ||
 								create_onthefly_variable(return_value)) {
+							/* error, constant used */
 							printf("TypeError: invalid lval of '=' operator (cannot be constant)\n", rtemp.identifier, rtemp.t);
 							
+							/* set all to zero */
 							return_value->value = 0;
 							return_value->t  = 0;
 							default_val = 0;
 							break;	
 						} else {
+							/* push back rval */
 							strcpy(master_state.vars[master_state.var_num].identifier, return_value->identifier);
 							master_state.vars[master_state.var_num].value = rtemp.value;
 							master_state.vars[master_state.var_num].t = rtemp.t;
@@ -294,6 +308,7 @@ void parse(char* line, variable* return_value, int stop_at_symbol) {
 				}
 			}
 		} else if(strchr(symbols, line[i]) != NULL && stop_at_symbol) {
+			/* we are supposed to stop at a symbol! */
 			if(strcmp(current_token, "")){
 				/* symbols also act as whitespace */
 				strcpy(ls.keywords[ls.keyword_num], current_token);
