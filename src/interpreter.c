@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "parse.h"
+#include "../inc/parse.h"
 #define MAX_LINE_LENGTH 100
 char* prompt = "scripts>";
 

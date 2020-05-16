@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include "parse.h"
+#include "../inc/parse.h"
 #define STR_SIZE 255
 #define STRPTR_SIZE 255
 
