@@ -223,6 +223,36 @@ void parse(char* line, variable* return_value, int stop_at_symbol) {
 					default_val = 0;
 					break;
 				}
+				if(line[i] == '*'){
+					variable rtemp;
+					parse(line+i+1, &rtemp, 0);
+					if(rtemp.t != INT8 && rtemp.t != INT16 && rtemp.t != INT32){
+						printf("TypeError: invalid rval of '*' operator %s of type %d (needs to be int)\n", rtemp.identifier, rtemp.t);
+						return_value->value = 0;
+						return_value->t  = 0;
+						default_val = 0;
+						break;	
+					}
+					if(strcmp(ls.keywords[0], "") && default_val) {
+						strcpy(return_value->identifier, ls.keywords[0]);
+						int pointer;
+						if((pointer = str_in_varlist(return_value->identifier, master_state.vars)) != -1) {
+							/* ^ check through variables */
+							return_value->value =  master_state.vars[pointer].value;
+							return_value->t =  master_state.vars[pointer].t;
+						} else if((pointer = str_in_varlist(return_value->identifier, master_state.cons)) != -1) {
+							/* ^ check through constants */
+							return_value->value =  master_state.cons[pointer].value;
+							return_value->t =  master_state.cons[pointer].t;
+						} else {
+							create_onthefly_variable(return_value);
+						}
+					}
+					sprintf(return_value->identifier, "%d", (int)return_value->value * (int)rtemp.value);
+					return_value->value = (void*)((int)rtemp.value * (int)return_value->value);
+					default_val = 0;
+					break;
+				}
 				if(line[i] == '-'){
 					variable rtemp;
 					parse(line+i+1, &rtemp, 0);
