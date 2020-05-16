@@ -181,7 +181,7 @@ void parse(char* line, variable* return_value, int stop_at_symbol) {
 					default_val = 0;
 				}
 			} else {
-				/* */
+				/* symbol found */
 				if(strcmp(current_token, "")){
 					/* symbols also act as whitespace */
 					strcpy(ls.keywords[ls.keyword_num], current_token);
@@ -304,6 +304,20 @@ void parse(char* line, variable* return_value, int stop_at_symbol) {
 						}
 					}
 					default_val = 0;
+					break;
+				}
+				/* comment */
+				if(line[i] == '#') {
+					/* add keyword */
+					strcpy(ls.keywords[ls.keyword_num], current_token);
+					ls.keyword_num++;
+					
+					for(int j = 0; j < 100; j++) {
+						current_token[j] = 0;
+					}
+				
+					ct_counter = 0;
+					/* comment found, line end */
 					break;
 				}
 			}
