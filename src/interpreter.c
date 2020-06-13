@@ -3,6 +3,7 @@
 #include <string.h>
 #include "../inc/parse.h"
 #define MAX_LINE_LENGTH 100
+
 char* prompt = "scripts>";
 
 void clear_str(char* str, int size){
@@ -15,10 +16,12 @@ void clear_str(char* str, int size){
 int main(int argc, char** argv){
 	/* check what mode they want (CLI or Interpreter) */
 	int mode = argc > 1;
+	
 	if(mode == 0){
 		/* input line */
 		char* line = malloc(MAX_LINE_LENGTH);
 		start_parser();
+	
 		/* introduction */
 		printf("This is the Simple Crappy Resource Intensive, Poorly-made Train-wreck of a Script (scripts)\nversion 1.0.0 - type help for general commands\n");
 		
