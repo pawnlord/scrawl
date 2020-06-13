@@ -28,6 +28,14 @@ int allocate_strptr(char*** strptr, int dim1, int dim2){
 		}
 	}
 }
+
+void free_strptr(char*** strptr, int dim1) {
+	for(int i = 0; i < dim1; i++){
+		free((*strptr)[i]);
+	}
+	free((*strptr));
+}
+
 void clear_strptr(char*** strptr) {
 	for(int i = 0; strcmp((*strptr)[i], ""); i++){
 		for(int j = 0; (*strptr)[i][j] != 0; j++){
@@ -90,6 +98,11 @@ void init_ls(line_structure* ls) {
 
 int start_parser() {
 	initialize_states(STRPTR_SIZE, STRPTR_SIZE);
+}
+
+int stop_parser() {
+	free(master_state.vars);
+	free(master_state.cons);
 }
 
 void reset_ls(line_structure* ls) {
@@ -430,4 +443,5 @@ void parse(char* line, variable* return_value, int stop_at_symbol) {
 		strcpy(return_value->identifier, ls.keywords[0]);
 		getvar(return_value);
 	} 
+	free_strptr(&(ls.keywords), STRPTR_SIZE);
 }

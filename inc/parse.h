@@ -43,3 +43,6 @@ void  parse(char* line, variable* return_value, int stop_at_symbol);
 
 /* "stack" simulation */
 int   push_back_master_state();
+
+/* stop parser, clean memory */
+int   stop_parser();
