@@ -7,8 +7,8 @@ typedef enum {
 /* tells type of variable */
 typedef enum {
 	NUL = 0,
-	INT8 = 8, INT16 = 16,
-	INT32 = 32, INT64 = 64,
+	INT8_e = 8, INT16_e = 16,
+	INT32_e = 32, INT64_e = 64,
 	POINTER = sizeof(void*)
 } type;
 

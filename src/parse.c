@@ -61,12 +61,12 @@ int isnum(char c){
 int create_onthefly_variable(variable* v){
 	if(isnum(v->identifier[0])){
 		v->value = (void*)atoi(v->identifier);
-		if((int)v->value <= 255) v->t = INT8;
+		if((int)v->value <= 255) v->t = INT8_e;
 		else if((int)v->value <= pow(2, (sizeof(int)*8)+1)){ 
 			if(sizeof(int) == 8) {
-				v->t = INT64;
+				v->t = INT64_e;
 			} else{
-				v->t = INT32;
+				v->t = INT32_e;
 			}
 		} else{
 			printf("SizeError: Number To Big! %d %d\n", (int)pow(2, (sizeof(int)*8)+1) , sizeof(int));
@@ -225,7 +225,7 @@ void parse(char* line, variable* return_value, int stop_at_symbol) {
 					
 					/* recursive, check rvalue */
 					parse(line+i+1, &rtemp, 1);
-					if(rtemp.t != INT8 && rtemp.t != INT16 && rtemp.t != INT32){
+					if(rtemp.t != INT8_e && rtemp.t != INT16_e && rtemp.t != INT32_e){
 						printf("TypeError: invalid rval of '-' operator %s (%d) of type %d (needs to be int)\n", rtemp.identifier, rtemp.value, rtemp.t);
 						
 						return_value->value = 0;
@@ -237,7 +237,7 @@ void parse(char* line, variable* return_value, int stop_at_symbol) {
 					sprintf(return_value->identifier, "%d", -((int)rtemp.value));
 					
 					return_value->value = (void*)(-((int)rtemp.value));
-					return_value->t = INT32;
+					return_value->t = INT32_e;
 					
 					default_val = 0;
 				}
@@ -265,7 +265,7 @@ void parse(char* line, variable* return_value, int stop_at_symbol) {
 					variable rtemp;
 					parse(line+i+1+is_autoset, &rtemp, 1);
 
-					if(rtemp.t != INT8 && rtemp.t != INT16 && rtemp.t != INT32){
+					if(rtemp.t != INT8_e && rtemp.t != INT16_e && rtemp.t != INT32_e){
 						printf("TypeError: invalid rval of '+' operator %s of type %d (needs to be int)\n", rtemp.identifier, rtemp.t);
 						
 						return_value->value = 0;
@@ -295,7 +295,7 @@ void parse(char* line, variable* return_value, int stop_at_symbol) {
 					variable rtemp;
 					
 					parse(line+i+1+is_autoset, &rtemp, 1);
-					if(rtemp.t != INT8 && rtemp.t != INT16 && rtemp.t != INT32){
+					if(rtemp.t != INT8_e && rtemp.t != INT16_e && rtemp.t != INT32_e){
 						printf("TypeError: invalid rval of '*' operator %s of type %d (needs to be int)\n", rtemp.identifier, rtemp.t);
 						
 						return_value->value = 0;
@@ -324,7 +324,7 @@ void parse(char* line, variable* return_value, int stop_at_symbol) {
 				if(line[i] == '-'){
 					variable rtemp;
 					parse(line+i+1+is_autoset, &rtemp, 1);
-					if(rtemp.t != INT8 && rtemp.t != INT16 && rtemp.t != INT32){
+					if(rtemp.t != INT8_e && rtemp.t != INT16_e && rtemp.t != INT32_e){
 						printf("TypeError: invalid rval of '-' operator %s of type %d (needs to be int)\n", rtemp.identifier, rtemp.t);
 						
 						return_value->value = 0;
@@ -352,7 +352,7 @@ void parse(char* line, variable* return_value, int stop_at_symbol) {
 					variable rtemp;
 					
 					parse(line+i+1, &rtemp, 0);
-					if(rtemp.t != INT8 && rtemp.t != INT16 && rtemp.t != INT32){
+					if(rtemp.t != INT8_e && rtemp.t != INT16_e && rtemp.t != INT32_e){
 						/* rvalue bad, error, set all to zero */
 						printf("TypeError: invalid rval of '=' operator %s of type %d\n", rtemp.identifier, rtemp.t);
 						
