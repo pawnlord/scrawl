@@ -20,7 +20,7 @@ int main(int argc, char** argv){
 		char* line = malloc(MAX_LINE_LENGTH);
 		start_parser();
 		/* introduction */
-		printf("This is simple crappy resource intensive partial trainwreck script (scripts)\nversion 1.0.0 - type help for general commands\n");
+		printf("This is the Simple Crappy Resource Intensive, Poorly-made Train-wreck of a Script (scripts)\nversion 1.0.0 - type help for general commands\n");
 		
 		/* main loop */
 		while(strcmp(line, "exit\n")){
