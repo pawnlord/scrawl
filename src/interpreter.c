@@ -50,7 +50,7 @@ int main(int argc, char** argv){
 			parse(line, &rv, 0);
 			
 			/* output based on type */
-			if(rv.t == INT8_e || rv.t == INT16_e || rv.t == INT32_e || rv.t == INT64_e){
+			if(rv.t == TYPE_INT8 || rv.t == TYPE_INT16 || rv.t == TYPE_INT32 || rv.t == TYPE_INT64){
 				printf("%d\n", rv.value);
 			}
 		}

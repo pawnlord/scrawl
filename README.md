@@ -1,5 +1,6 @@
 # scripts
 **S**imple, **C**rappy, **R**esource **I**ntensive, **P**oorly-made **T**rain-wreck of a **S**cript  
+A portable, python-esque scripting language made in pure C.
 
 # building
 Building should be universal on all platforms.  

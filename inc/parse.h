@@ -6,10 +6,10 @@ typedef enum {
 
 /* tells type of variable */
 typedef enum {
-	NUL = 0,
-	INT8_e = 8, INT16_e = 16,
-	INT32_e = 32, INT64_e = 64,
-	POINTER = sizeof(void*)
+	TYPE_NUL = 0,
+	TYPE_INT8 = 8, TYPE_INT16 = 16,
+	TYPE_INT32 = 32, TYPE_INT64 = 64,
+	TYPE_POINTER = sizeof(void*)
 } type;
 
 /* generic variable structure */
@@ -33,6 +33,8 @@ typedef struct {
 	int var_num;
 	variable* cons;
 	int con_num;
+	int* block_line_num;
+	int block_level;
 } state;
 
 /* setup for parser */

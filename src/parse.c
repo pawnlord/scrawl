@@ -50,7 +50,7 @@ void init_variable(variable* var, int name_size){
 	for(int i = 0; i < name_size; i++){
 		var->identifier[i] = 0;
 	}
-	var->t = NUL;
+	var->t = TYPE_NUL;
 }
 
 int isnum(char c){
@@ -61,12 +61,12 @@ int isnum(char c){
 int create_onthefly_variable(variable* v){
 	if(isnum(v->identifier[0])){
 		v->value = (void*)atoi(v->identifier);
-		if((int)v->value <= 255) v->t = INT8_e;
+		if((int)v->value <= 255) v->t = TYPE_INT8;
 		else if((int)v->value <= pow(2, (sizeof(int)*8)+1)){ 
 			if(sizeof(int) == 8) {
-				v->t = INT64_e;
+				v->t = TYPE_INT64;
 			} else{
-				v->t = INT32_e;
+				v->t = TYPE_INT32;
 			}
 		} else{
 			printf("SizeError: Number To Big! %d %d\n", (int)pow(2, (sizeof(int)*8)+1) , sizeof(int));
@@ -77,17 +77,23 @@ int create_onthefly_variable(variable* v){
 	return 0;
 }
 
-void initialize_states(int max_varnum, int max_connum){
+void initialize_states(int max_varnum, int max_connum, int max_block){
 	master_state.vars = malloc(max_varnum*sizeof(variable));
 	for(int i = 0; i < max_varnum; i++){
 		init_variable(&master_state.vars[i], STR_SIZE);
 	}
 	master_state.cons = malloc(max_connum*sizeof(variable));
-	for(int i = 0; i < max_varnum; i++){
+	for(int i = 0; i < max_connum; i++){
 		init_variable(&master_state.cons[i], STR_SIZE);
 	}
 	master_state.var_num = 0;
 	master_state.con_num = 0;
+	
+	master_state.block_line_num = malloc(max_block*sizeof(int));
+	for(int i = 0; i < max_block; i++){
+		master_state.block_line_num[i] = 0;
+	}
+	master_state.block_level = 0;
 }
 
 void init_ls(line_structure* ls) {
@@ -97,12 +103,13 @@ void init_ls(line_structure* ls) {
 }
 
 int start_parser() {
-	initialize_states(STRPTR_SIZE, STRPTR_SIZE);
+	initialize_states(STRPTR_SIZE, STRPTR_SIZE, STR_SIZE);
 }
 
 int stop_parser() {
 	free(master_state.vars);
 	free(master_state.cons);
+	free(master_state.block_line_num);
 }
 
 void reset_ls(line_structure* ls) {
@@ -195,6 +202,11 @@ void parse(char* line, variable* return_value, int stop_at_symbol) {
 				if(indentation_unit == 0){
 					indentation_unit = indentation;
 				}
+				//printf("%d > %d\n", indentation, indentation_unit*master_state.block_level);
+				if(indentation <= indentation_unit * master_state.block_level &&
+							 master_state.block_level != 0){
+					printf("bad indentation\n");
+				}
 			}
 
 			ct_counter++;
@@ -207,13 +219,13 @@ void parse(char* line, variable* return_value, int stop_at_symbol) {
 		} else if(strchr(whitespace, line[i]) != NULL && line_started && strcmp(current_token, "")) {
 			/* add keyword */
 			strcpy(ls.keywords[ls.keyword_num], current_token);
-			
 			ls.keyword_num++;
 			
+			/* clear current_token */
 			for(int j = 0; j < 100; j++) {
 				current_token[j] = 0;
 			}
-		
+
 			ct_counter = 0;
 		
 		} else if(strchr(symbols, line[i]) != NULL && !stop_at_symbol){
@@ -225,7 +237,8 @@ void parse(char* line, variable* return_value, int stop_at_symbol) {
 					
 					/* recursive, check rvalue */
 					parse(line+i+1, &rtemp, 1);
-					if(rtemp.t != INT8_e && rtemp.t != INT16_e && rtemp.t != INT32_e){
+					/* TypeError: wrong Type */
+					if(rtemp.t != TYPE_INT8 && rtemp.t != TYPE_INT16 && rtemp.t != TYPE_INT32){
 						printf("TypeError: invalid rval of '-' operator %s (%d) of type %d (needs to be int)\n", rtemp.identifier, rtemp.value, rtemp.t);
 						
 						return_value->value = 0;
@@ -237,7 +250,7 @@ void parse(char* line, variable* return_value, int stop_at_symbol) {
 					sprintf(return_value->identifier, "%d", -((int)rtemp.value));
 					
 					return_value->value = (void*)(-((int)rtemp.value));
-					return_value->t = INT32_e;
+					return_value->t = TYPE_INT32;
 					
 					default_val = 0;
 				}
@@ -265,7 +278,7 @@ void parse(char* line, variable* return_value, int stop_at_symbol) {
 					variable rtemp;
 					parse(line+i+1+is_autoset, &rtemp, 1);
 
-					if(rtemp.t != INT8_e && rtemp.t != INT16_e && rtemp.t != INT32_e){
+					if(rtemp.t != TYPE_INT8 && rtemp.t != TYPE_INT16 && rtemp.t != TYPE_INT32){
 						printf("TypeError: invalid rval of '+' operator %s of type %d (needs to be int)\n", rtemp.identifier, rtemp.t);
 						
 						return_value->value = 0;
@@ -295,7 +308,7 @@ void parse(char* line, variable* return_value, int stop_at_symbol) {
 					variable rtemp;
 					
 					parse(line+i+1+is_autoset, &rtemp, 1);
-					if(rtemp.t != INT8_e && rtemp.t != INT16_e && rtemp.t != INT32_e){
+					if(rtemp.t != TYPE_INT8 && rtemp.t != TYPE_INT16 && rtemp.t != TYPE_INT32){
 						printf("TypeError: invalid rval of '*' operator %s of type %d (needs to be int)\n", rtemp.identifier, rtemp.t);
 						
 						return_value->value = 0;
@@ -324,7 +337,7 @@ void parse(char* line, variable* return_value, int stop_at_symbol) {
 				if(line[i] == '-'){
 					variable rtemp;
 					parse(line+i+1+is_autoset, &rtemp, 1);
-					if(rtemp.t != INT8_e && rtemp.t != INT16_e && rtemp.t != INT32_e){
+					if(rtemp.t != TYPE_INT8 && rtemp.t != TYPE_INT16 && rtemp.t != TYPE_INT32){
 						printf("TypeError: invalid rval of '-' operator %s of type %d (needs to be int)\n", rtemp.identifier, rtemp.t);
 						
 						return_value->value = 0;
@@ -352,7 +365,7 @@ void parse(char* line, variable* return_value, int stop_at_symbol) {
 					variable rtemp;
 					
 					parse(line+i+1, &rtemp, 0);
-					if(rtemp.t != INT8_e && rtemp.t != INT16_e && rtemp.t != INT32_e){
+					if(rtemp.t != TYPE_INT8 && rtemp.t != TYPE_INT16 && rtemp.t != TYPE_INT32){
 						/* rvalue bad, error, set all to zero */
 						printf("TypeError: invalid rval of '=' operator %s of type %d\n", rtemp.identifier, rtemp.t);
 						
@@ -413,6 +426,18 @@ void parse(char* line, variable* return_value, int stop_at_symbol) {
 					default_val = 0;
 					break;
 				}
+				/***************** 
+				 * BLOCK STATEMENT CODE
+				 * very important, needs it's own heading
+				 *****************/
+				if(line[i] == ':'){
+					if(strcmp(ls.keywords[0], "if") == 0){ 
+						/* we found an if statement*/
+						printf("if statement found\n");
+						master_state.block_level++;
+					}
+				}
+
 				/* comment */
 				if(line[i] == '#') {
 					/* add keyword */
