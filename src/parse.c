@@ -94,6 +94,8 @@ void initialize_states(int max_varnum, int max_connum, int max_block){
 		master_state.block_line_num[i] = 0;
 	}
 	master_state.block_level = 0;
+
+	master_state.can_unindent = 0;
 }
 
 void init_ls(line_structure* ls) {
@@ -202,10 +204,25 @@ void parse(char* line, variable* return_value, int stop_at_symbol) {
 				if(indentation_unit == 0){
 					indentation_unit = indentation;
 				}
-				//printf("%d > %d\n", indentation, indentation_unit*master_state.block_level);
-				if(indentation <= indentation_unit * master_state.block_level &&
-							 master_state.block_level != 0){
-					printf("bad indentation\n");
+				//printf("indentation %d, can_unindent %d, block_level %d\n", indentation, master_state.can_unindent, master_state.block_level);
+				if(master_state.can_unindent == 0){
+					if(indentation < indentation_unit * master_state.block_level ||
+								(indentation_unit == 0 && master_state.block_level != 0)){
+						printf("bad indentation: %d <= %d\n", indentation,  indentation_unit * master_state.block_level );
+					} else if(master_state.block_level != 0){
+						master_state.can_unindent = 1;
+					}
+				} else {
+					if(indentation > indentation_unit * master_state.block_level) {
+						printf("bad indentation: %d > %d\n", indentation,  indentation_unit * master_state.block_level );
+					} else if(indentation == 0 && master_state.block_level != 0) {
+						master_state.can_unindent = 0;
+						master_state.block_level = 0;
+						indentation_unit = 0;
+					} else if(indentation < indentation_unit * master_state.block_level) {
+						master_state.can_unindent = 0;
+						master_state.block_level = indentation/indentation_unit;
+					}
 				}
 			}
 

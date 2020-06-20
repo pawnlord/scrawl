@@ -35,6 +35,7 @@ typedef struct {
 	int con_num;
 	int* block_line_num;
 	int block_level;
+	int can_unindent;
 } state;
 
 /* setup for parser */

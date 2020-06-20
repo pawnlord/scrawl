@@ -12,6 +12,7 @@ Just run the command and a prompt will appear.
 
 ## operations  
 Currently, there aren't any functions. But I do have variables and operators (`+`, `-`, `*`, `=`) working.  
+Division hasn't been added yet since that would require floats  
   
 example:  
 ```
