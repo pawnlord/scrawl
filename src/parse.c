@@ -215,25 +215,31 @@ void parse(char* line, variable* return_value, int execute, int stop_at_symbol, 
 				if(master_state.can_unindent == 0){
 					if(indentation < indentation_unit * master_state.block_level ||
 								(indentation_unit == 0 && master_state.block_level != 0)){
+					
 						printf("bad indentation: %d <= %d\n", indentation,  indentation_unit * master_state.block_level );
+					
 					} else if(master_state.block_level != 0){
 						master_state.can_unindent = 1;
+					
 					}
 				} else {
 					if(indentation > indentation_unit * master_state.block_level) {
 						printf("bad indentation: %d > %d\n", indentation,  indentation_unit * master_state.block_level );
-					} else if(indentation == 0 && master_state.block_level != 0) {
-						master_state.can_unindent = 0;
-						master_state.block_level = 0;
-						indentation_unit = 0;
-						printf("line %d: %d\n", master_state.block_line_num[master_state.block_level],
-									 master_state.block_types[master_state.block_level]);
-					} else if(indentation < indentation_unit * master_state.block_level) {
+					
+					} else if(indentation < indentation_unit * master_state.block_level ||
+								(indentation == 0 && master_state.block_level != 0)) {
+						
 						master_state.can_unindent = 0;
 						master_state.block_level = indentation/indentation_unit;
+						
 						printf("line %d: %d\n", master_state.block_line_num[master_state.block_level],
 									 master_state.block_types[master_state.block_level]);
+						
+						if(indentation == 0 && master_state.block_level != 0){
+							indentation_unit = 0; /* if they want to change indentation (for whatever reason), allow them */
+						}
 					}
+
 				}
 			}
 

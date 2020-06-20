@@ -12,7 +12,6 @@ typedef enum {
 	TYPE_POINTER = sizeof(void*)
 } type;
 
-
 /* tells type of block */
 typedef enum {
 	BLOCK_NONE = 0, /* none. just for scope */
