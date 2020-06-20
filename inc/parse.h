@@ -12,6 +12,15 @@ typedef enum {
 	TYPE_POINTER = sizeof(void*)
 } type;
 
+
+/* tells type of block */
+typedef enum {
+	BLOCK_NONE = 0, /* none. just for scope */
+	BLOCK_IF,
+	BLOCK_WHILE
+	/* Future Types: BLOCK_FOR, BLOCK_FUNCTION, BLOCK_HANDLER*/ 
+} block_type;
+
 /* generic variable structure */
 typedef struct {
 	char* identifier;
@@ -34,6 +43,8 @@ typedef struct {
 	variable* cons;
 	int con_num;
 	int* block_line_num;
+	block_type* block_types;
+	int line_count;
 	int block_level;
 	int can_unindent;
 } state;
@@ -42,7 +53,7 @@ typedef struct {
 int   start_parser();
 
 /* actual parse function */
-void  parse(char* line, variable* return_value, int stop_at_symbol);
+void  parse(char* line, variable* return_value, int execute, int stop_at_symbol, int line_num);
 
 /* "stack" simulation */
 int   push_back_master_state();

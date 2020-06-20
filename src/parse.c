@@ -96,6 +96,13 @@ void initialize_states(int max_varnum, int max_connum, int max_block){
 	master_state.block_level = 0;
 
 	master_state.can_unindent = 0;
+
+	master_state.line_count = 0;
+	
+	master_state.block_types = malloc(max_block*sizeof(int));
+	for(int i = 0; i < max_block; i++){
+		master_state.block_types[i] = 0;
+	}
 }
 
 void init_ls(line_structure* ls) {
@@ -156,7 +163,7 @@ int getvar(variable* var){
 	}
 }
 
-void parse(char* line, variable* return_value, int stop_at_symbol) {
+void parse(char* line, variable* return_value, int execute, int stop_at_symbol, int line_num) {
 	/* things we need to remember */
 	static int   indentation_unit = 0;
 	static int   last_indentation = 0;
@@ -219,9 +226,13 @@ void parse(char* line, variable* return_value, int stop_at_symbol) {
 						master_state.can_unindent = 0;
 						master_state.block_level = 0;
 						indentation_unit = 0;
+						printf("line %d: %d\n", master_state.block_line_num[master_state.block_level],
+									 master_state.block_types[master_state.block_level]);
 					} else if(indentation < indentation_unit * master_state.block_level) {
 						master_state.can_unindent = 0;
 						master_state.block_level = indentation/indentation_unit;
+						printf("line %d: %d\n", master_state.block_line_num[master_state.block_level],
+									 master_state.block_types[master_state.block_level]);
 					}
 				}
 			}
@@ -253,7 +264,7 @@ void parse(char* line, variable* return_value, int stop_at_symbol) {
 					variable rtemp;
 					
 					/* recursive, check rvalue */
-					parse(line+i+1, &rtemp, 1);
+					parse(line+i+1, &rtemp, 1, 1, line_num);
 					/* TypeError: wrong Type */
 					if(rtemp.t != TYPE_INT8 && rtemp.t != TYPE_INT16 && rtemp.t != TYPE_INT32){
 						printf("TypeError: invalid rval of '-' operator %s (%d) of type %d (needs to be int)\n", rtemp.identifier, rtemp.value, rtemp.t);
@@ -293,7 +304,7 @@ void parse(char* line, variable* return_value, int stop_at_symbol) {
 				/* actual functionality */
 				if(line[i] == '+'){
 					variable rtemp;
-					parse(line+i+1+is_autoset, &rtemp, 1);
+					parse(line+i+1+is_autoset, &rtemp, 1, 1, line_num);
 
 					if(rtemp.t != TYPE_INT8 && rtemp.t != TYPE_INT16 && rtemp.t != TYPE_INT32){
 						printf("TypeError: invalid rval of '+' operator %s of type %d (needs to be int)\n", rtemp.identifier, rtemp.t);
@@ -324,7 +335,7 @@ void parse(char* line, variable* return_value, int stop_at_symbol) {
 				if(line[i] == '*'){
 					variable rtemp;
 					
-					parse(line+i+1+is_autoset, &rtemp, 1);
+					parse(line+i+1+is_autoset, &rtemp, 1, 1, line_num);
 					if(rtemp.t != TYPE_INT8 && rtemp.t != TYPE_INT16 && rtemp.t != TYPE_INT32){
 						printf("TypeError: invalid rval of '*' operator %s of type %d (needs to be int)\n", rtemp.identifier, rtemp.t);
 						
@@ -353,7 +364,7 @@ void parse(char* line, variable* return_value, int stop_at_symbol) {
 				}
 				if(line[i] == '-'){
 					variable rtemp;
-					parse(line+i+1+is_autoset, &rtemp, 1);
+					parse(line+i+1+is_autoset, &rtemp, 1, 1, line_num);
 					if(rtemp.t != TYPE_INT8 && rtemp.t != TYPE_INT16 && rtemp.t != TYPE_INT32){
 						printf("TypeError: invalid rval of '-' operator %s of type %d (needs to be int)\n", rtemp.identifier, rtemp.t);
 						
@@ -381,7 +392,7 @@ void parse(char* line, variable* return_value, int stop_at_symbol) {
 				if(line[i] == '='){
 					variable rtemp;
 					
-					parse(line+i+1, &rtemp, 0);
+					parse(line+i+1, &rtemp, 1, 0, line_num);
 					if(rtemp.t != TYPE_INT8 && rtemp.t != TYPE_INT16 && rtemp.t != TYPE_INT32){
 						/* rvalue bad, error, set all to zero */
 						printf("TypeError: invalid rval of '=' operator %s of type %d\n", rtemp.identifier, rtemp.t);
@@ -450,7 +461,8 @@ void parse(char* line, variable* return_value, int stop_at_symbol) {
 				if(line[i] == ':'){
 					if(strcmp(ls.keywords[0], "if") == 0){ 
 						/* we found an if statement*/
-						printf("if statement found\n");
+						master_state.block_types[master_state.block_level] = BLOCK_IF;
+						master_state.block_line_num[master_state.block_level] = line_num;
 						master_state.block_level++;
 					}
 				}

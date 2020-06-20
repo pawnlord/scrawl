@@ -5,7 +5,7 @@
 #include "../inc/handlers.h"
 #define MAX_LINE_LENGTH 100
 
-char* prompt = "scrawl>";
+char* prompt = "scrawl>>";
 
 volatile int* exit_loop;
 
@@ -29,6 +29,10 @@ int main(int argc, char** argv){
 	setup_handler(exit_loop);
 
 	if(mode == 0){
+		int line_num = 0;
+
+		char** lines = malloc(5000);
+
 		/* input line */
 		char* line = malloc(MAX_LINE_LENGTH);
 		start_parser();
@@ -47,8 +51,13 @@ int main(int argc, char** argv){
 			
 			/* return value */
 			variable rv;
-			parse(line, &rv, 0);
+			parse(line, &rv, 1, 0, line_num);
+
+			/* copy line for later use */
+			lines[line_num] = malloc(MAX_LINE_LENGTH);
+			strcpy(lines[line_num], line);
 			
+			line_num++;	
 			/* output based on type */
 			if(rv.t == TYPE_INT8 || rv.t == TYPE_INT16 || rv.t == TYPE_INT32 || rv.t == TYPE_INT64){
 				printf("%d\n", rv.value);
