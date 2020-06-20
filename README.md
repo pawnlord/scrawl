@@ -1,11 +1,11 @@
-# scripts
-**S**imple, **C**rappy, **R**esource **I**ntensive, **P**oorly-made **T**rain-wreck of a **S**cript  
+# scrawl
+**S**crawl **C**an **R**arely **A**utomate **W**ith **L**ittle-effort  
 A portable, python-esque scripting language made in pure C.
 
 # building
 Building should be universal on all platforms.  
-`gcc src/*.c -o scripts`  
-
+`gcc src/*.c -o scrawl`  
+  
 # usage
 There is no feeding in a file yet. That should be comming eventually.  
 Just run the command and a prompt will appear.
