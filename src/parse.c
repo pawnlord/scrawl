@@ -163,33 +163,147 @@ int getvar(variable* var){
 	}
 }
 
+
+int tokenize(char* line, token** tokens){
+	int current_token = 0;
+	int current_character = 0;
+	
+	(*tokens) = (token*)malloc(sizeof(token) * 100);
+	(*tokens)[current_token].identifier = malloc(STR_SIZE);
+	
+	/* constant strings */
+	static const char* alphanumeric = "qwertyuiopasdfghjklzxcvbnm1234567890_";	
+	static const char* numeric = "1234567890";	
+	static const char* alpha = "qwertyuiopasdfghjklzxcvbnm_";	
+	static const char* symbols = "!@#$%^&*()-=+{}[]\\;:'\"<>.,";
+	static const char* whitespace = " \t\n";
+	
+	/* current indentation */
+	int indentation = 0;
+	int line_started = 0;
+	enum {
+		LAST_NONE = 0,
+		LAST_ALPHA,
+		LAST_NUMBER,
+		LAST_OP,
+		LAST_WHITESPACE
+	} last_char_type = LAST_NONE;
+
+	for(int i = 0; line[i] != 0; i++){
+		if(strchr(alphanumeric, line[i]) != NULL) {
+			if(last_char_type == LAST_OP || (last_char_type == LAST_WHITESPACE && !line_started)) {
+				
+				(*tokens)[current_token].identifier[current_character] = 0;
+
+				current_character = 0;
+				current_token++;
+				
+				(*tokens)[current_token].identifier = malloc(current_token);
+				(*tokens)[current_token].ttype = TOKEN_VAR;
+			} else if(last_char_type == LAST_NONE || last_char_type == LAST_WHITESPACE){
+				(*tokens)[current_token].ttype = TOKEN_VAR;
+			}
+			
+			if(strchr(numeric, line[i]) != NULL){
+				last_char_type = LAST_NUMBER;
+			} else {
+				last_char_type = LAST_ALPHA;
+			}
+
+			(*tokens)[current_token].identifier[current_character] = line[i];
+			current_character++;
+
+			line_started = 1;
+		} else if(strchr(whitespace, line[i]) != NULL) {
+			if(last_char_type == LAST_ALPHA || last_char_type == LAST_NUMBER || last_char_type == LAST_OP) {
+				(*tokens)[current_token].identifier[current_character] = 0;
+				
+				current_character = 0;
+				current_token++;
+				
+				(*tokens)[current_token].identifier = malloc(current_token);
+			}
+			if(!line_started){
+				if(last_char_type == LAST_NONE) {
+					printf("AAAAA\n");
+
+					(*tokens)[current_token].ttype = TOKEN_WHITESPACE;
+				}
+				indentation+=1;
+
+				(*tokens)[current_token].identifier[current_character] = line[i];
+				current_character++;
+			}
+			last_char_type = LAST_WHITESPACE;			
+		} else if(strchr(symbols, line[i]) != NULL) {
+			
+			if(last_char_type == LAST_ALPHA || last_char_type == LAST_NUMBER) {
+				(*tokens)[current_token].identifier[current_character] = 0;
+				
+				current_character = 0;
+				current_token++;
+				
+				(*tokens)[current_token].identifier = malloc(current_token);
+				(*tokens)[current_token].ttype = TOKEN_OP;
+			}
+
+
+			if(last_char_type == LAST_NONE || last_char_type == LAST_WHITESPACE){
+				(*tokens)[current_token].ttype = TOKEN_OP;
+			}
+			
+			last_char_type = LAST_OP;
+			
+			(*tokens)[current_token].identifier[current_character] = line[i];
+			current_character++;
+
+			line_started = 1;
+		}
+	}
+	(*tokens)[current_token].ttype = TOKEN_END;
+			
+	return 1;
+}
+
+int parse(char* line, variable* return_value, int line_num){
+	token* tokens;
+	if(tokenize(line, &tokens)){
+		for(int i = 0; tokens[i].ttype != TOKEN_END; i++){
+			printf("%d: %s|\n", tokens[i].ttype, tokens[i].identifier);
+		}
+	} else{
+		return 0;
+	}
+	return 1;
+}
+/*
 void parse(char* line, variable* return_value, int execute, int stop_at_symbol, int line_num) {
-	/* things we need to remember */
+	/* things we need to remember /
 	static int   indentation_unit = 0;
 	static int   last_indentation = 0;
 	
-	/* constant strings */
+	/* constant strings /
 	static const char* alphanumeric = "qwertyuiopasdfghjklzxcvbnm1234567890_";
 	
 	static const char* symbols = "!@#$%^&*()-=+{}[]\\;:'\".,";
 	
-	/* TODO: Add priority */
-	/*static const char* symbol_priority = "+-*";*/
+	/* TODO: Add priority /
+	/*static const char* symbol_priority = "+-*";/
 	
 	static const char* whitespace = " \t\n";
 	
 	line_structure ls;
 	init_ls(&ls);
 	
-	/* default return flag */
+	/* default return flag /
 	int default_val = 1;
 	
-	/* current indentation */
+	/* current indentation /
 	int indentation = 0;
 	
-	/* token we are reading */
+	/* token we are reading /
 	char* current_token = malloc(100);
-	/* clear it */	
+	/* clear it /	
 	for(int i = 0; i < 100; i++) {
 		current_token[i] = 0;
 	}
@@ -201,12 +315,12 @@ void parse(char* line, variable* return_value, int execute, int stop_at_symbol, 
 	init_variable(return_value, 100);
 
 	for(int i = 0; line[i] != 0; i++) {
-		/* make sure line[i] is alphanumeric */
+		/* make sure line[i] is alphanumeric /
 		if(strchr(alphanumeric, line[i]) != NULL) {
-			/* copy */
+			/* copy /
 			current_token[ct_counter] = line[i];
 			
-			/* if the line hasn't started, set indentation unit */
+			/* if the line hasn't started, set indentation unit /
 			if(!line_started){
 				if(indentation_unit == 0){
 					indentation_unit = indentation;
@@ -236,7 +350,7 @@ void parse(char* line, variable* return_value, int execute, int stop_at_symbol, 
 									 master_state.block_types[master_state.block_level]);
 						
 						if(indentation == 0 && master_state.block_level != 0){
-							indentation_unit = 0; /* if they want to change indentation (for whatever reason), allow them */
+							indentation_unit = 0; /* if they want to change indentation (for whatever reason), allow them /
 						}
 					}
 
@@ -247,15 +361,15 @@ void parse(char* line, variable* return_value, int execute, int stop_at_symbol, 
 			line_started = 1;
 		
 		} else if(strchr(whitespace, line[i]) != NULL && !line_started) {
-			/* add to indentation*/
+			/* add to indentation/
 			
 			indentation += 1;
 		} else if(strchr(whitespace, line[i]) != NULL && line_started && strcmp(current_token, "")) {
-			/* add keyword */
+			/* add keyword /
 			strcpy(ls.keywords[ls.keyword_num], current_token);
 			ls.keyword_num++;
 			
-			/* clear current_token */
+			/* clear current_token /
 			for(int j = 0; j < 100; j++) {
 				current_token[j] = 0;
 			}
@@ -263,15 +377,15 @@ void parse(char* line, variable* return_value, int execute, int stop_at_symbol, 
 			ct_counter = 0;
 		
 		} else if(strchr(symbols, line[i]) != NULL && !stop_at_symbol){
-			/* symbol found, use it */
-			/* if line hasn't started, do things specific to that*/
+			/* symbol found, use it /
+			/* if line hasn't started, do things specific to that/
 			if(!line_started){
 				if(line[i] == '-'){
 					variable rtemp;
 					
-					/* recursive, check rvalue */
+					/* recursive, check rvalue /
 					parse(line+i+1, &rtemp, 1, 1, line_num);
-					/* TypeError: wrong Type */
+					/* TypeError: wrong Type /
 					if(rtemp.t != TYPE_INT8 && rtemp.t != TYPE_INT16 && rtemp.t != TYPE_INT32){
 						printf("TypeError: invalid rval of '-' operator %s (%d) of type %d (needs to be int)\n", rtemp.identifier, rtemp.value, rtemp.t);
 						
@@ -289,9 +403,9 @@ void parse(char* line, variable* return_value, int execute, int stop_at_symbol, 
 					default_val = 0;
 				}
 			} else {
-				/* symbol found */
+				/* symbol found /
 				if(strcmp(current_token, "")){
-					/* symbols also act as whitespace */
+					/* symbols also act as whitespace /
 					strcpy(ls.keywords[ls.keyword_num], current_token);
 					ls.keyword_num++;
 				}
@@ -300,14 +414,14 @@ void parse(char* line, variable* return_value, int execute, int stop_at_symbol, 
 				}
 				ct_counter = 0;
 				
-				/* += operator style */
+				/* += operator style /
 				char is_autoset = 0;
 
 				if(line[i+1] == '='){
 					is_autoset = 1;
 				}
 
-				/* actual functionality */
+				/* actual functionality /
 				if(line[i] == '+'){
 					variable rtemp;
 					parse(line+i+1+is_autoset, &rtemp, 1, 1, line_num);
@@ -400,7 +514,7 @@ void parse(char* line, variable* return_value, int execute, int stop_at_symbol, 
 					
 					parse(line+i+1, &rtemp, 1, 0, line_num);
 					if(rtemp.t != TYPE_INT8 && rtemp.t != TYPE_INT16 && rtemp.t != TYPE_INT32){
-						/* rvalue bad, error, set all to zero */
+						/* rvalue bad, error, set all to zero /
 						printf("TypeError: invalid rval of '=' operator %s of type %d\n", rtemp.identifier, rtemp.t);
 						
 						return_value->value = 0;
@@ -410,7 +524,7 @@ void parse(char* line, variable* return_value, int execute, int stop_at_symbol, 
 						break;	
 					}
 					if(ls.keyword_num > 1){
-						/* too many lvals, set all to zero */
+						/* too many lvals, set all to zero /
 						printf("TypeError: invalid lval of '=' operator (cannot have multiple)\n", rtemp.identifier, rtemp.t);
 						
 						return_value->value = 0;
@@ -424,9 +538,9 @@ void parse(char* line, variable* return_value, int execute, int stop_at_symbol, 
 						int pointer;
 						
 						if((pointer = str_in_varlist(return_value->identifier, master_state.vars)) != -1) {
-							/* ^ check through variables */
+							/* ^ check through variables /
 							
-							/* we found one, copy new value */
+							/* we found one, copy new value /
 							master_state.vars[pointer].value = rtemp.value;
 							master_state.vars[pointer].t = rtemp.t;
 							
@@ -434,10 +548,10 @@ void parse(char* line, variable* return_value, int execute, int stop_at_symbol, 
 							return_value->t  = rtemp.t;
 						} else if((pointer = str_in_varlist(return_value->identifier, master_state.cons)) != -1 ||
 								create_onthefly_variable(return_value)) {
-							/* error, constant used */
+							/* error, constant used /
 							printf("TypeError: invalid lval of '=' operator (cannot be constant)\n", rtemp.identifier, rtemp.t);
 							
-							/* set all to zero */
+							/* set all to zero /
 							return_value->value = 0;
 							return_value->t  = 0;
 							
@@ -445,7 +559,7 @@ void parse(char* line, variable* return_value, int execute, int stop_at_symbol, 
 
 							break;	
 						} else {
-							/* push back rval */
+							/* push back rval /
 							strcpy(master_state.vars[master_state.var_num].identifier, return_value->identifier);
 							
 							master_state.vars[master_state.var_num].value = rtemp.value;
@@ -463,19 +577,19 @@ void parse(char* line, variable* return_value, int execute, int stop_at_symbol, 
 				/***************** 
 				 * BLOCK STATEMENT CODE
 				 * very important, needs it's own heading
-				 *****************/
+				 *************** /
 				if(line[i] == ':'){
 					if(strcmp(ls.keywords[0], "if") == 0){ 
-						/* we found an if statement*/
+						/* we found an if statement/
 						master_state.block_types[master_state.block_level] = BLOCK_IF;
 						master_state.block_line_num[master_state.block_level] = line_num;
 						master_state.block_level++;
 					}
 				}
 
-				/* comment */
+				/* comment /
 				if(line[i] == '#') {
-					/* add keyword */
+					/* add keyword /
 					strcpy(ls.keywords[ls.keyword_num], current_token);
 					ls.keyword_num++;
 					
@@ -484,24 +598,25 @@ void parse(char* line, variable* return_value, int execute, int stop_at_symbol, 
 					}
 				
 					ct_counter = 0;
-					/* comment found, line end */
+					/* comment found, line end /
 					break;
 				}
 			}
 		} else if(strchr(symbols, line[i]) != NULL && stop_at_symbol) {
-			/* we are supposed to stop at a symbol! */
+			/* we are supposed to stop at a symbol! /
 			if(strcmp(current_token, "")){
-				/* symbols also act as whitespace */
+				/* symbols also act as whitespace /
 				strcpy(ls.keywords[ls.keyword_num], current_token);
 				ls.keyword_num++;
 			}
 			break;
 		}
 	}
-	/* find value of keyword */
+	/* find value of keyword /
 	if(strcmp(ls.keywords[0], "") && default_val) {
 		strcpy(return_value->identifier, ls.keywords[0]);
 		getvar(return_value);
 	} 
 	free_strptr(&(ls.keywords), STRPTR_SIZE);
 }
+*/

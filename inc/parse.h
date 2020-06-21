@@ -1,8 +1,10 @@
 /* tells what format the current line is */
 typedef enum {
-	OPERATION = 0, FUNCTION,
-	DEFINITION, DATATYPE
-} format;
+	TOKEN_VAR = 0, 
+	TOKEN_OP,
+	TOKEN_WHITESPACE, /* keep simple for now */
+	TOKEN_END
+} token_type;
 
 /* tells type of variable */
 typedef enum {
@@ -27,11 +29,17 @@ typedef struct {
 	type t;
 } variable;
 
+/* generic variable structure */
+typedef struct {
+	char* identifier;
+	token_type ttype;
+
+} token;
+
 /* tells us the structure of line (keywords, format) */
 typedef struct {
 	char** keywords;
 	int keyword_num;
-	format f;
 	char   inited;
 } line_structure;
 
@@ -52,7 +60,7 @@ typedef struct {
 int   start_parser();
 
 /* actual parse function */
-void  parse(char* line, variable* return_value, int execute, int stop_at_symbol, int line_num);
+int  parse(char* line, variable* return_value, int line_num);
 
 /* "stack" simulation */
 int   push_back_master_state();

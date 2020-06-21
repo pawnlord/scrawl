@@ -51,7 +51,8 @@ int main(int argc, char** argv){
 			
 			/* return value */
 			variable rv;
-			parse(line, &rv, 1, 0, line_num);
+			rv.t = TYPE_NUL;
+			parse(line, &rv, line_num);
 
 			/* copy line for later use */
 			lines[line_num] = malloc(MAX_LINE_LENGTH);
