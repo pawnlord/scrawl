@@ -225,8 +225,6 @@ int tokenize(char* line, token** tokens){
 			}
 			if(!line_started){
 				if(last_char_type == LAST_NONE) {
-					printf("AAAAA\n");
-
 					(*tokens)[current_token].ttype = TOKEN_WHITESPACE;
 				}
 				indentation+=1;
@@ -265,12 +263,89 @@ int tokenize(char* line, token** tokens){
 	return 1;
 }
 
+				variable rtemp;
+int parse_tokens(token* tokens, variable* return_value, int line_num){
+	init_variable(return_value, 100);
+	for(int i = 0; tokens[i].ttype != TOKEN_END; i++){
+		if(tokens[i].ttype == TOKEN_VAR) {
+			
+			strcpy(return_value->identifier, tokens[i].identifier);
+			getvar(return_value);
+		} if (tokens[i].ttype == TOKEN_OP){
+			if(strcmp(tokens[i].identifier, "=") == 0){
+				variable rtemp;
+				
+				parse_tokens(tokens+i+1, &rtemp, line_num);
+				
+				if(rtemp.t != TYPE_INT8 && rtemp.t != TYPE_INT16 && rtemp.t != TYPE_INT32){
+					/* rvalue bad, error, set all to zero */
+					printf("TypeError: invalid rval of '=' operator %s of type %d\n", rtemp.identifier, rtemp.t);
+					
+					return_value->value = 0;
+					return_value->t  = 0;
+					
+					break;	
+				}
+				if(i == 0){
+					/* too many lvals, set all to zero */
+					printf("TokenError: need lval!\n", rtemp.identifier, rtemp.t);
+					
+					return_value->value = 0;
+					return_value->t  = 0;
+					
+					break;	
+				}
+
+				if(strcmp(tokens[i-1].identifier, "")) {
+					strcpy(return_value->identifier, tokens[i-1].identifier);
+					int pointer;
+					
+					if((pointer = str_in_varlist(return_value->identifier, master_state.vars)) != -1) {
+						/* ^ check through variables */
+						
+						/* we found one, copy new value */
+						master_state.vars[pointer].value = rtemp.value;
+						master_state.vars[pointer].t = rtemp.t;
+						
+						return_value->value = rtemp.value;
+						return_value->t  = rtemp.t;
+					} else if((pointer = str_in_varlist(return_value->identifier, master_state.cons)) != -1 ||
+							create_onthefly_variable(return_value)) {
+						/* error, constant used */
+						printf("TypeError: invalid lval of '=' operator (cannot be constant)\n", rtemp.identifier, rtemp.t);
+						
+						/* set all to zero */
+						return_value->value = 0;
+						return_value->t  = 0;
+
+						break;	
+					} else {
+						/* push back rval */
+						strcpy(master_state.vars[master_state.var_num].identifier, return_value->identifier);
+						
+						master_state.vars[master_state.var_num].value = rtemp.value;
+						master_state.vars[master_state.var_num].t = rtemp.t;
+						
+						return_value->value = rtemp.value;
+						return_value->t  = rtemp.t;
+						
+						master_state.var_num+=1;
+					}
+				}
+			}
+		}
+	}
+}
+
 int parse(char* line, variable* return_value, int line_num){
 	token* tokens;
+	static int   indentation_unit = 0;
+	static int   last_indentation = 0;
+	int indentation = 0;
+
+
 	if(tokenize(line, &tokens)){
-		for(int i = 0; tokens[i].ttype != TOKEN_END; i++){
-			printf("%d: %s|\n", tokens[i].ttype, tokens[i].identifier);
-		}
+		parse_tokens(tokens, return_value, line_num);
 	} else{
 		return 0;
 	}

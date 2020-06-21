@@ -52,6 +52,7 @@ int main(int argc, char** argv){
 			/* return value */
 			variable rv;
 			rv.t = TYPE_NUL;
+			
 			parse(line, &rv, line_num);
 
 			/* copy line for later use */
