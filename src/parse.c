@@ -163,7 +163,7 @@ int getvar(variable* var){
 	}
 }
 
-
+/* Split line into main keywords and assign types */
 int tokenize(char* line, token** tokens){
 	int current_token = 0;
 	int current_character = 0;
@@ -173,8 +173,7 @@ int tokenize(char* line, token** tokens){
 	
 	/* constant strings */
 	static const char* alphanumeric = "qwertyuiopasdfghjklzxcvbnm1234567890_";	
-	static const char* numeric = "1234567890";	
-	static const char* alpha = "qwertyuiopasdfghjklzxcvbnm_";	
+	static const char* numeric = "1234567890";	\
 	static const char* symbols = "!@#$%^&*()-=+{}[]\\;:'\"<>.,";
 	static const char* whitespace = " \t\n";
 	
@@ -188,33 +187,43 @@ int tokenize(char* line, token** tokens){
 		LAST_OP,
 		LAST_WHITESPACE
 	} last_char_type = LAST_NONE;
-
+	/* loop through every character */
 	for(int i = 0; line[i] != 0; i++){
+		/* see if it's alphanumeric, a symbol, or whitespace */
 		if(strchr(alphanumeric, line[i]) != NULL) {
+			/* if it was a different type of character last, push back and start a new token 
+			   else if it's just started or one was already made by whitespace, just set the type */
 			if(last_char_type == LAST_OP || (last_char_type == LAST_WHITESPACE && !line_started)) {
 				
+				/* null terminate */
 				(*tokens)[current_token].identifier[current_character] = 0;
 
+				/* reset and pushback */
 				current_character = 0;
 				current_token++;
 				
+				/* allocate and set type */
 				(*tokens)[current_token].identifier = malloc(current_token);
 				(*tokens)[current_token].ttype = TOKEN_VAR;
 			} else if(last_char_type == LAST_NONE || last_char_type == LAST_WHITESPACE){
 				(*tokens)[current_token].ttype = TOKEN_VAR;
 			}
 			
+			/* last char depending on if it is number or not */
 			if(strchr(numeric, line[i]) != NULL){
 				last_char_type = LAST_NUMBER;
 			} else {
 				last_char_type = LAST_ALPHA;
 			}
 
+			/* copy character */
 			(*tokens)[current_token].identifier[current_character] = line[i];
 			current_character++;
 
+			/* start line if it's not */
 			line_started = 1;
 		} else if(strchr(whitespace, line[i]) != NULL) {
+			/* if inbetween characters, set up a new token */
 			if(last_char_type == LAST_ALPHA || last_char_type == LAST_NUMBER || last_char_type == LAST_OP) {
 				(*tokens)[current_token].identifier[current_character] = 0;
 				
@@ -223,6 +232,7 @@ int tokenize(char* line, token** tokens){
 				
 				(*tokens)[current_token].identifier = malloc(current_token);
 			}
+			/* if the line hasn't started, add to indentation */
 			if(!line_started){
 				if(last_char_type == LAST_NONE) {
 					(*tokens)[current_token].ttype = TOKEN_WHITESPACE;
@@ -232,9 +242,11 @@ int tokenize(char* line, token** tokens){
 				(*tokens)[current_token].identifier[current_character] = line[i];
 				current_character++;
 			}
+
+			/* set last_char_type accordingly */
 			last_char_type = LAST_WHITESPACE;			
 		} else if(strchr(symbols, line[i]) != NULL) {
-			
+			/* if after letter or number, make new token */
 			if(last_char_type == LAST_ALPHA || last_char_type == LAST_NUMBER) {
 				(*tokens)[current_token].identifier[current_character] = 0;
 				
@@ -245,34 +257,42 @@ int tokenize(char* line, token** tokens){
 				(*tokens)[current_token].ttype = TOKEN_OP;
 			}
 
-
+			/* if one is there for us, just set the type */
 			if(last_char_type == LAST_NONE || last_char_type == LAST_WHITESPACE){
 				(*tokens)[current_token].ttype = TOKEN_OP;
 			}
 			
+			/* set last_char_type accordingly */
 			last_char_type = LAST_OP;
 			
+			/* copy */
 			(*tokens)[current_token].identifier[current_character] = line[i];
 			current_character++;
 
+			/* start line if not started */
 			line_started = 1;
 		}
 	}
+	/* add a token that terminates */
 	(*tokens)[current_token].ttype = TOKEN_END;
 			
 	return 1;
 }
 
-				variable rtemp;
+/***********************
+ * ACTUAL PARSER START *
+ ***********************/
+
 int parse_tokens(token* tokens, variable* return_value, int line_num){
 	init_variable(return_value, 100);
 	for(int i = 0; tokens[i].ttype != TOKEN_END; i++){
 		if(tokens[i].ttype == TOKEN_VAR) {
-			
+			/* get value if it is a variable */
 			strcpy(return_value->identifier, tokens[i].identifier);
 			getvar(return_value);
+		
 		} if (tokens[i].ttype == TOKEN_OP){
-			if(strcmp(tokens[i].identifier, "=") == 0){
+			if(strcmp(tokens[i].identifier, "=") == 0) {
 				variable rtemp;
 				
 				parse_tokens(tokens+i+1, &rtemp, line_num);
@@ -321,22 +341,67 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 						break;	
 					} else {
 						/* push back rval */
+						/* make new variable */
 						strcpy(master_state.vars[master_state.var_num].identifier, return_value->identifier);
 						
 						master_state.vars[master_state.var_num].value = rtemp.value;
 						master_state.vars[master_state.var_num].t = rtemp.t;
 						
+						/* set return value */
 						return_value->value = rtemp.value;
 						return_value->t  = rtemp.t;
 						
 						master_state.var_num+=1;
 					}
+
 				}
-			}
-		}
+				break;
+
+			} else if(strcmp(tokens[i].identifier, "+") == 0) {
+				printf("+ found\n");
+				variable rtemp;
+				if(i == 0){
+					/* TODO: don't do this */
+					printf("TokenError: + needs lval\n");
+					
+					return_value->value = 0;
+					return_value->t  = 0;
+
+					break;	
+				}	
+				parse_tokens(tokens+i+1, &rtemp, line_num);
+				printf("rtemp: %s %d\n", rtemp.identifier, rtemp.value);
+
+				if(rtemp.t != TYPE_INT8 && rtemp.t != TYPE_INT16 && rtemp.t != TYPE_INT32){
+					printf("TypeError: invalid rval of '+' operator %s of type %d (needs to be int)\n", rtemp.identifier, rtemp.t);
+					
+					return_value->value = 0;
+					return_value->t  = 0;
+
+					break;	
+				}
+
+				if(strcmp(tokens[i-1].identifier, "")) {
+					strcpy(return_value->identifier, tokens[i-1].identifier);
+					getvar(return_value);
+				}
+
+				printf("lval: %s %d\n", return_value->identifier, return_value->value);
+
+				sprintf(return_value->identifier, "%d", (int)return_value->value + (int)rtemp.value);
+				return_value->value = (void*)((int)rtemp.value + (int)return_value->value);
+				printf("rv: %s %d\n", return_value->identifier, return_value->value);
+
+				break;
+			} 
+
+		} 
+
 	}
+
 }
 
+/* function to tokenize and parse. This is to be called in interpreter */
 int parse(char* line, variable* return_value, int line_num){
 	token* tokens;
 	static int   indentation_unit = 0;
