@@ -285,7 +285,9 @@ int tokenize(char* line, token** tokens){
 
 int parse_tokens(token* tokens, variable* return_value, int line_num){
 	init_variable(return_value, 100);
+	int is_autoset;
 	for(int i = 0; tokens[i].ttype != TOKEN_END; i++){
+		is_autoset = 0;
 		if(tokens[i].ttype == TOKEN_VAR) {
 			/* get value if it is a variable */
 			strcpy(return_value->identifier, tokens[i].identifier);
@@ -357,7 +359,8 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 				}
 				break;
 
-			} else if(strcmp(tokens[i].identifier, "+") == 0) {
+			} else if(strcmp(tokens[i].identifier, "+") == 0 ||
+					(is_autoset = !strcmp(tokens[i].identifier, "+="))) {
 				printf("+ found\n");
 				variable rtemp;
 				if(i == 0){
@@ -386,12 +389,13 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 					getvar(return_value);
 				}
 
-				printf("lval: %s %d\n", return_value->identifier, return_value->value);
-
 				sprintf(return_value->identifier, "%d", (int)return_value->value + (int)rtemp.value);
 				return_value->value = (void*)((int)rtemp.value + (int)return_value->value);
-				printf("rv: %s %d\n", return_value->identifier, return_value->value);
-
+				
+				if(is_autoset){
+					strcpy(return_value->identifier, tokens[i-1].identifier);
+					autoset(return_value);
+				}
 				break;
 			} 
 
