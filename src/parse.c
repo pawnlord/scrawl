@@ -405,6 +405,44 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 					autoset(return_value);
 				}
 				break;
+			}else if(strcmp(tokens[i].identifier, "*") == 0 ||
+					(is_autoset = !strcmp(tokens[i].identifier, "*="))) {
+
+				variable rtemp;
+				if(i == 0){
+					/* TODO: don't do this */
+					printf("TokenError: * needs lval\n");
+					
+					return_value->value = 0;
+					return_value->t  = 0;
+
+					break;	
+				}	
+				parse_tokens(tokens+i+1, &rtemp, line_num);
+				
+
+				if(rtemp.t != TYPE_INT8 && rtemp.t != TYPE_INT16 && rtemp.t != TYPE_INT32){
+					printf("TypeError: invalid rval of '*' operator %s of type %d (needs to be int)\n", rtemp.identifier, rtemp.t);
+					
+					return_value->value = 0;
+					return_value->t  = 0;
+
+					break;	
+				}
+
+				if(strcmp(tokens[i-1].identifier, "")) {
+					strcpy(return_value->identifier, tokens[i-1].identifier);
+					getvar(return_value);
+				}
+
+				sprintf(return_value->identifier, "%d", (int)return_value->value * (int)rtemp.value);
+				return_value->value = (void*)((int)rtemp.value * (int)return_value->value);
+				
+				if(is_autoset){
+					strcpy(return_value->identifier, tokens[i-1].identifier);
+					autoset(return_value);
+				}
+				break;
 			} else if (strcmp(tokens[i].identifier, "-") == 0 && !last_token_is_number(tokens, i)) {
 				i++;
 				variable rtemp;
