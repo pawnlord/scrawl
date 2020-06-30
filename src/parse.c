@@ -256,7 +256,7 @@ int tokenize(char* line, token** tokens){
 				(*tokens)[current_token].identifier = malloc(current_token);
 				(*tokens)[current_token].ttype = TOKEN_OP;
 			}
-
+			
 			/* if one is there for us, just set the type */
 			if(last_char_type == LAST_NONE || last_char_type == LAST_WHITESPACE){
 				(*tokens)[current_token].ttype = TOKEN_OP;
@@ -268,6 +268,17 @@ int tokenize(char* line, token** tokens){
 			/* copy */
 			(*tokens)[current_token].identifier[current_character] = line[i];
 			current_character++;
+
+			if(line[i] == '='){
+				(*tokens)[current_token].identifier[current_character] = 0;
+				
+				current_character = 0;
+				current_token++;
+				
+				(*tokens)[current_token].identifier = malloc(current_token);
+				(*tokens)[current_token].ttype = TOKEN_OP;
+				
+			}
 
 			/* start line if not started */
 			line_started = 1;
