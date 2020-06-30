@@ -279,6 +279,14 @@ int tokenize(char* line, token** tokens){
 	return 1;
 }
 
+/* Used to see if - sign is negative or subtraction */
+int last_token_is_number(token* tokens, int index){
+	if(index == 0){
+		return 0;
+	}
+	return 1;
+}
+
 /***********************
  * ACTUAL PARSER START *
  ***********************/
@@ -361,7 +369,7 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 
 			} else if(strcmp(tokens[i].identifier, "+") == 0 ||
 					(is_autoset = !strcmp(tokens[i].identifier, "+="))) {
-				printf("+ found\n");
+
 				variable rtemp;
 				if(i == 0){
 					/* TODO: don't do this */
@@ -373,7 +381,7 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 					break;	
 				}	
 				parse_tokens(tokens+i+1, &rtemp, line_num);
-				printf("rtemp: %s %d\n", rtemp.identifier, rtemp.value);
+				
 
 				if(rtemp.t != TYPE_INT8 && rtemp.t != TYPE_INT16 && rtemp.t != TYPE_INT32){
 					printf("TypeError: invalid rval of '+' operator %s of type %d (needs to be int)\n", rtemp.identifier, rtemp.t);
@@ -391,6 +399,67 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 
 				sprintf(return_value->identifier, "%d", (int)return_value->value + (int)rtemp.value);
 				return_value->value = (void*)((int)rtemp.value + (int)return_value->value);
+				
+				if(is_autoset){
+					strcpy(return_value->identifier, tokens[i-1].identifier);
+					autoset(return_value);
+				}
+				break;
+			} else if (strcmp(tokens[i].identifier, "-") == 0 && !last_token_is_number(tokens, i)) {
+				i++;
+				variable rtemp;
+				init_variable(&rtemp, 100);
+				strcpy(rtemp.identifier, tokens[i].identifier);
+				
+				getvar(&rtemp);
+				/* TypeError: wrong Type */
+				if(rtemp.t != TYPE_INT8 && rtemp.t != TYPE_INT16 && rtemp.t != TYPE_INT32){
+					printf("TypeError: invalid rval of '-' operator %s (%d) of type %d (needs to be int)\n", rtemp.identifier, rtemp.value, rtemp.t);
+					
+					return_value->value = 0;
+					return_value->t  = 0;
+					
+					break;	
+				}
+				sprintf(return_value->identifier, "%d", -((int)rtemp.value));
+				
+				return_value->value = (void*)(-((int)rtemp.value));
+				return_value->t = TYPE_INT32;
+				
+				strcpy(tokens[i].identifier, return_value->identifier);
+
+			} else if(strcmp(tokens[i].identifier, "-") == 0 ||
+					(is_autoset = !strcmp(tokens[i].identifier, "-="))) {
+
+				variable rtemp;
+				if(i == 0){
+					/* TODO: don't do this */
+					printf("TokenError: - needs lval\n");
+					
+					return_value->value = 0;
+					return_value->t  = 0;
+
+					break;	
+				}	
+				parse_tokens(tokens+i+1, &rtemp, line_num);
+
+				if(rtemp.t != TYPE_INT8 && rtemp.t != TYPE_INT16 && rtemp.t != TYPE_INT32){
+					printf("TypeError: invalid rval of '-' operator %s of type %d (needs to be int)\n", rtemp.identifier, rtemp.t);
+					
+					return_value->value = 0;
+					return_value->t  = 0;
+
+					break;	
+				}
+
+				if(strcmp(tokens[i-1].identifier, "")) {
+					strcpy(return_value->identifier, tokens[i-1].identifier);
+					getvar(return_value);
+				}
+				
+				printf("%d - %d = %d\n", (int)return_value->value , (int)rtemp.value, (int)return_value->value - (int)rtemp.value);
+				sprintf(return_value->identifier, "%d", (int)return_value->value - (int)rtemp.value);
+				return_value->value = (void*)((int)return_value->value - (int)rtemp.value);
 				
 				if(is_autoset){
 					strcpy(return_value->identifier, tokens[i-1].identifier);
