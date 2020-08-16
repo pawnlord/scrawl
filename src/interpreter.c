@@ -3,7 +3,6 @@
 #include <string.h>
 #include "../inc/parse.h"
 #include "../inc/handlers.h"
-#define MAX_LINE_LENGTH 100
 
 char* prompt = "scrawl>>";
 
@@ -31,8 +30,6 @@ int main(int argc, char** argv){
 	if(mode == 0){
 		int line_num = 0;
 
-		char** lines = malloc(5000);
-
 		/* input line */
 		char* line = malloc(MAX_LINE_LENGTH);
 		start_parser();
@@ -55,9 +52,6 @@ int main(int argc, char** argv){
 			
 			parse(line, &rv, line_num);
 
-			/* copy line for later use */
-			lines[line_num] = malloc(MAX_LINE_LENGTH);
-			strcpy(lines[line_num], line);
 			
 			line_num++;	
 			/* output based on type */

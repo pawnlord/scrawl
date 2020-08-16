@@ -93,6 +93,7 @@ void initialize_states(int max_varnum, int max_connum, int max_block){
 	for(int i = 0; i < max_block; i++){
 		master_state.block_line_num[i] = 0;
 	}
+	master_state.lines = malloc(5000);
 	master_state.block_level = 0;
 
 	master_state.can_unindent = 0;
@@ -558,6 +559,7 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 
 				break;	
 			}
+			/* get indentation level */
 			int indentation = strlen(tokens[i].identifier);
 			/* set indent unit if we are in a new block */
 			if(master_state.last_indent == 0 ) {
@@ -572,6 +574,7 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 
 				break;	
 			}
+			/* don't allow too much indentation */
 			if(indentation/master_state.indent_unit > master_state.block_level){
 				printf("IndentError: to much indentation (expected %d units, got %d)(line num %d)\n", master_state.block_level, 
 								indentation/master_state.indent_unit,  line_num);
@@ -580,11 +583,41 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 
 				break;	
 			}
+			if(indentation/master_state.indent_unit < master_state.block_level){
+				/* 2 possibilities: 
+				 * - correct end of block
+				 * - end of block too early */
+				if(master_state.last_indent/master_state.indent_unit < master_state.block_level){
+					/* unindent too early */
+					printf("IndentError: need body to block (line num %d)\n", line_num);
+
+					return_value->value = 0;
+					return_value->t  = 0;
+
+					break;
+				} else {
+					printf("end of block\n");
+				}
+
+			}
 			master_state.last_indent = indentation;
-			printf("indentation %d indent_unit %d last_indent %d\n", indentation, master_state.indent_unit, master_state.last_indent);
+			// printf("indentation %d indent_unit %d last_indent %d\n", indentation, master_state.indent_unit, master_state.last_indent);
 		} 
 		if (tokens[i].ttype != TOKEN_WHITESPACE && i == 0){
 			/* set last indent if we wouldn't otherwise */
+			if(0 < master_state.block_level){
+				if(master_state.indent_unit == 0 ||master_state.last_indent/master_state.indent_unit < master_state.block_level){
+					/* unindent too early */
+					printf("IndentError: need body to block (line num %d)\n", line_num);
+
+					return_value->value = 0;
+					return_value->t  = 0;
+
+					break;
+				} else {
+					printf("end of block\n");
+				}
+			}
 			master_state.last_indent = 0;
 		}
 	}
@@ -608,6 +641,9 @@ int parse(char* line, variable* return_value, int line_num){
 	static int   last_indentation = 0;
 	int indentation = 0;
 
+	/* copy line for later use */
+	master_state.lines[line_num] = malloc(MAX_LINE_LENGTH);
+	strcpy(master_state.lines[line_num], line);
 
 	if(tokenize(line, &tokens)){
 		parse_tokens(tokens, return_value, line_num);

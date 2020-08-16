@@ -1,3 +1,4 @@
+#define MAX_LINE_LENGTH 255
 /* tells what format the current line is */
 typedef enum {
 	TOKEN_VAR = 0, 
@@ -52,6 +53,7 @@ typedef struct {
 	int* block_line_num;
 	block_type* block_types;
 	int line_count;
+	char** lines;
 	int block_level;
 	int can_unindent;
 	int last_indent;
