@@ -1,0 +1,16 @@
+# Start with all files, work backwards
+*
+
+# Source
+!src
+!src/*
+
+# Include
+!inc
+!inc/*
+
+# Readme
+!README.md
+
+# this file
+!.gitignore

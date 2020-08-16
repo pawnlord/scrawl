@@ -54,6 +54,8 @@ typedef struct {
 	int line_count;
 	int block_level;
 	int can_unindent;
+	int last_indent;
+	int indent_unit;
 } state;
 
 /* setup for parser */
