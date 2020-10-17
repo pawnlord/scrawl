@@ -94,6 +94,9 @@ void initialize_states(int max_varnum, int max_connum, int max_block){
 		master_state.block_line_num[i] = 0;
 	}
 	master_state.lines = malloc(5000);
+	for(int i = 0; i < 5000; i++){
+		master_state.lines[i] = malloc(MAX_LINE_LENGTH);
+	}
 	master_state.block_level = 0;
 
 	master_state.can_unindent = 0;
@@ -109,6 +112,8 @@ void initialize_states(int max_varnum, int max_connum, int max_block){
 	master_state.indent_unit = 0;
 
 	master_state.running_block = 1;
+
+	master_state.stop_comparison= 0;
 }
 
 void init_ls(line_structure* ls) {
@@ -280,7 +285,7 @@ int tokenize(char* line, token** tokens){
 			(*tokens)[current_token].identifier[current_character] = line[i];
 			current_character++;
 
-			if(line[i] == '='){
+			if(line[i] == '=' && line[i+1] != '='){
 				(*tokens)[current_token].identifier[current_character] = 0;
 				
 				current_character = 0;
@@ -313,6 +318,7 @@ int last_token_is_number(token* tokens, int index){
  * ACTUAL PARSER START *
  ***********************/
 
+/* put all samey code together for ease of reading and access */
 int add( token* tokens, variable* return_value, int line_num, int i){
 	variable rtemp;
 	if(i == 0){
@@ -324,7 +330,9 @@ int add( token* tokens, variable* return_value, int line_num, int i){
 
 		return 0;
 	}	
+	master_state.stop_comparison = 1;
 	parse_tokens(tokens+i+1, &rtemp, line_num);
+	master_state.stop_comparison = 0;
 	
 
 	if(rtemp.t != TYPE_INT8 && rtemp.t != TYPE_INT16 && rtemp.t != TYPE_INT32){
@@ -357,7 +365,9 @@ int subtract( token* tokens, variable* return_value, int line_num, int i){
 
 		return 0;	
 	}	
+	master_state.stop_comparison = 1;
 	parse_tokens(tokens+i+1, &rtemp, line_num);
+	master_state.stop_comparison = 0;
 
 	if(rtemp.t != TYPE_INT8 && rtemp.t != TYPE_INT16 && rtemp.t != TYPE_INT32){
 		printf("TypeError: invalid rval of '-' operator %s of type %d (needs to be int) (line num %d)\n", rtemp.identifier, rtemp.t, line_num);
@@ -390,7 +400,9 @@ int multiply( token* tokens, variable* return_value, int line_num, int i){
 
 		return 0;	
 	}	
+	master_state.stop_comparison = 1;
 	parse_tokens(tokens+i+1, &rtemp, line_num);
+	master_state.stop_comparison = 0;
 	
 
 	if(rtemp.t != TYPE_INT8 && rtemp.t != TYPE_INT16 && rtemp.t != TYPE_INT32){
@@ -410,6 +422,136 @@ int multiply( token* tokens, variable* return_value, int line_num, int i){
 	sprintf(return_value->identifier, "%d", (int)return_value->value * (int)rtemp.value);
 	return_value->value = (void*)((int)rtemp.value * (int)return_value->value);
 	
+	return 1;
+}
+
+int less_than( token* tokens, variable* return_value, int line_num, int i){
+	variable rtemp;
+	if(i == 0){
+		/* TODO: don't do this */
+		printf("TokenError: No lval for '<' operator (line num %d)\n", line_num);
+		
+		return_value->value = 0;
+		return_value->t  = 0;
+
+		return 0;	
+	}	
+	parse_tokens(tokens+i+1, &rtemp, line_num);
+	
+
+	if(rtemp.t != TYPE_INT8 && rtemp.t != TYPE_INT16 && rtemp.t != TYPE_INT32){
+		printf("TypeError: invalid rval of '<' operator %s of type %d (needs to be int) (line num %d)\n", rtemp.identifier, rtemp.t, line_num);
+		
+		return_value->value = 0;
+		return_value->t  = 0;
+
+		return 0;	
+	}
+
+	if(strcmp(tokens[i-1].identifier, "")) {
+		strcpy(return_value->identifier, tokens[i-1].identifier);
+		getvar(return_value);
+	}
+
+	sprintf(return_value->identifier, "%d", (int)return_value->value < (int)rtemp.value);
+	return_value->value = (void*)((int)return_value->value < (int)rtemp.value);
+	return_value->t = TYPE_BOOL;
+
+	return 1;
+}
+int greater_than( token* tokens, variable* return_value, int line_num, int i){
+	variable rtemp;
+	if(i == 0){
+		/* TODO: don't do this */
+		printf("TokenError: No lval for '>' operator (line num %d)\n", line_num);
+		
+		return_value->value = 0;
+		return_value->t  = 0;
+
+		return 0;	
+	}	
+	parse_tokens(tokens+i+1, &rtemp, line_num);
+	
+
+	if(rtemp.t != TYPE_INT8 && rtemp.t != TYPE_INT16 && rtemp.t != TYPE_INT32){
+		printf("TypeError: invalid rval of '>' operator %s of type %d (needs to be int) (line num %d)\n", rtemp.identifier, rtemp.t, line_num);
+		
+		return_value->value = 0;
+		return_value->t  = 0;
+
+		return 0;	
+	}
+
+	if(strcmp(tokens[i-1].identifier, "")) {
+		strcpy(return_value->identifier, tokens[i-1].identifier);
+		getvar(return_value);
+	}
+
+	sprintf(return_value->identifier, "%d", (int)return_value->value > (int)rtemp.value);
+	return_value->value = (void*)((int)return_value->value > (int)rtemp.value);
+	return_value->t = TYPE_BOOL;
+
+	return 1;
+}
+int equal_to( token* tokens, variable* return_value, int line_num, int i){
+	variable rtemp;
+	if(i == 0){
+		/* TODO: don't do this */
+		printf("TokenError: No lval for '==' operator (line num %d)\n", line_num);
+		
+		return_value->value = 0;
+		return_value->t  = 0;
+
+		return 0;	
+	}	
+	parse_tokens(tokens+i+1, &rtemp, line_num);
+	
+
+	if(rtemp.t != TYPE_INT8 && rtemp.t != TYPE_INT16 && rtemp.t != TYPE_INT32){
+		printf("TypeError: invalid rval of '==' operator %s of type %d (needs to be int) (line num %d)\n", rtemp.identifier, rtemp.t, line_num);
+		
+		return_value->value = 0;
+		return_value->t  = 0;
+
+		return 0;	
+	}
+
+	if(strcmp(tokens[i-1].identifier, "")) {
+		strcpy(return_value->identifier, tokens[i-1].identifier);
+		getvar(return_value);
+	}
+
+	sprintf(return_value->identifier, "%d", (int)return_value->value == (int)rtemp.value);
+	return_value->value = (void*)((int)return_value->value == (int)rtemp.value);
+	return_value->t = TYPE_BOOL;
+
+	return 1;
+}
+
+
+int run_if(token* tokens, variable* return_value, int line_num){
+	char* if_line = malloc(STR_SIZE);
+	strcpy(if_line, master_state.lines[master_state.block_line_num[master_state.block_level]]);
+	
+	token* if_tokens;
+	tokenize(if_line, &if_tokens);
+	
+	int i;
+	for(i = 0; if_tokens[i].ttype != TOKEN_END; i++);
+	
+	if(i == 0) {
+		/* huh? */
+		printf("IndentError: indent not in block (line num %d)\n", line_num);
+		return_value->value = 0;
+		return_value->t  = 0;
+		return 0;	
+	}
+	
+	if_tokens[i-1].ttype = TOKEN_END;
+	variable evaled_expression;
+	parse_tokens(if_tokens, &evaled_expression, master_state.block_line_num[master_state.block_level]);
+
+	free(if_line);
 	return 1;
 }
 
@@ -447,13 +589,16 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 						return 0;
 					}
 
+					master_state.block_level++;
+
 					master_state.block_types[master_state.block_level] = block;
 					master_state.block_line_num[master_state.block_level] = line_num;
 					master_state.can_unindent = 0;
+					if(block = BLOCK_IF){
+						master_state.running_block = 0;
+					}
 
-					master_state.block_level++;
-
-				} else if(strcmp(tokens[i].identifier, "=") == 0) {
+				} else if(strcmp(tokens[i].identifier, "=") == 0 && block == BLOCK_NONE) {
 					variable rtemp;
 					
 					parse_tokens(tokens+i+1, &rtemp, line_num);
@@ -519,8 +664,8 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 					break;
 
 				}
-				else if(strcmp(tokens[i].identifier, "+") == 0 ||
-						(is_autoset = !strcmp(tokens[i].identifier, "+="))) {
+				else if((strcmp(tokens[i].identifier, "+") == 0 ||
+						(is_autoset = !strcmp(tokens[i].identifier, "+="))) && block == BLOCK_NONE) {
 
 					if (!add(tokens, return_value, line_num, i)){
 						break;
@@ -530,9 +675,8 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 						strcpy(return_value->identifier, tokens[i-1].identifier);
 						autoset(return_value);
 					}
-					break;
-				}else if(strcmp(tokens[i].identifier, "*") == 0 ||
-						(is_autoset = !strcmp(tokens[i].identifier, "*="))) {
+				}else if((strcmp(tokens[i].identifier, "*") == 0 ||
+						(is_autoset = !strcmp(tokens[i].identifier, "*="))) && block == BLOCK_NONE) {
 
 					
 					if (!multiply(tokens, return_value, line_num, i)){
@@ -543,8 +687,7 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 						strcpy(return_value->identifier, tokens[i-1].identifier);
 						autoset(return_value);
 					}
-					break;
-				} else if (strcmp(tokens[i].identifier, "-") == 0 && !last_token_is_number(tokens, i)) {
+				} else if (strcmp(tokens[i].identifier, "-") == 0 && !last_token_is_number(tokens, i) && block == BLOCK_NONE) {
 					i++;
 					variable rtemp;
 					init_variable(&rtemp, 100);
@@ -567,8 +710,8 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 					
 					strcpy(tokens[i].identifier, return_value->identifier);
 
-				} else if(strcmp(tokens[i].identifier, "-") == 0 ||
-						(is_autoset = !strcmp(tokens[i].identifier, "-="))) {
+				} else if((strcmp(tokens[i].identifier, "-") == 0 ||
+						(is_autoset = !strcmp(tokens[i].identifier, "-="))) && block == BLOCK_NONE) {
 
 					if (!subtract(tokens, return_value, line_num, i)){
 						break;
@@ -578,10 +721,51 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 						strcpy(return_value->identifier, tokens[i-1].identifier);
 						autoset(return_value);
 					}
+				} else if(master_state.stop_comparison){
+					break;
+				} else if(strcmp(tokens[i].identifier, "<") == 0 && block == BLOCK_NONE) {
+
+					if (!less_than(tokens, return_value, line_num, i)){
+						break;
+					}
+
+					break;
+				} else if(strcmp(tokens[i].identifier, ">") == 0 && block == BLOCK_NONE) {
+
+					if (!greater_than(tokens, return_value, line_num, i)){
+						break;
+					}
+					break;
+				} else if(strcmp(tokens[i].identifier, "==") == 0 && block == BLOCK_NONE) {
+
+					if (!equal_to(tokens, return_value, line_num, i)){
+						break;
+					}
+
 					break;
 				} 
 
 			} else if (tokens[i].ttype == TOKEN_WHITESPACE && i == 0){
+				if(master_state.block_level == 0){
+					/* if we're not in a block, what are we doing? */
+					printf("IndentError: indent not in block (line num %d)\n", line_num);
+
+					return_value->value = 0;
+					return_value->t  = 0;
+
+					break;	
+				}
+			}
+		}
+	} else {
+		for(i = 0; tokens[i].ttype != TOKEN_END; i++){
+			if(strcmp(tokens[i].identifier, "_debugblocks") == 0){
+				printf("current block info:\nblock_level: %d\nblock_line_num: %d\nblock_type: %d",
+					master_state.block_level, master_state.block_line_num[master_state.block_level], 
+					master_state.block_types[master_state.block_level]);
+				return NULL;
+			}
+			if (tokens[i].ttype == TOKEN_WHITESPACE && i == 0){
 				if(master_state.block_level == 0){
 					/* if we're not in a block, what are we doing? */
 					printf("IndentError: indent not in block (line num %d)\n", line_num);
@@ -606,15 +790,6 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 
 					break;	
 				}
-				/* don't allow too much indentation */
-				if(indentation/master_state.indent_unit > master_state.block_level){
-					printf("IndentError: to much indentation (expected %d units, got %d)(line num %d)\n", master_state.block_level, 
-									indentation/master_state.indent_unit,  line_num);
-					return_value->value = 0;
-					return_value->t  = 0;
-
-					break;	
-				}
 				if(indentation/master_state.indent_unit < master_state.block_level){
 					/* 2 possibilities: 
 					* - correct end of block
@@ -628,9 +803,13 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 
 						break;
 					} else {
-						printf("end of block\n");
-					}
 
+						if(master_state.block_types[master_state.block_level] == BLOCK_IF){
+							run_if(tokens, return_value, line_num);
+						}
+						master_state.block_level-=1;
+						master_state.running_block = 1;
+					}
 				}
 				master_state.last_indent = indentation;
 				// printf("indentation %d indent_unit %d last_indent %d\n", indentation, master_state.indent_unit, master_state.last_indent);
@@ -647,15 +826,19 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 
 						break;
 					} else {
-						
+						printf("hello\n");
+						if(master_state.block_types[master_state.block_level] == BLOCK_IF){
+							run_if(tokens, return_value, line_num);
+						}
+						master_state.block_level-=1;
+						master_state.running_block = 1;
 					}
 				}
 				master_state.last_indent = 0;
 			}
 		}
-	} else {
-		
 	}
+	
 	if(block != BLOCK_NONE && strcmp(tokens[i-1].identifier, ":")){
 		/* TODO: don't do this */
 		printf("SyntaxError: Invalid block syntax (line num %d)\n", line_num);

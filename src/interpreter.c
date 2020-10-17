@@ -57,6 +57,8 @@ int main(int argc, char** argv){
 			/* output based on type */
 			if(rv.t == TYPE_INT8 || rv.t == TYPE_INT16 || rv.t == TYPE_INT32 || rv.t == TYPE_INT64){
 				printf("%d\n", rv.value);
+			} else if(rv.t == TYPE_BOOL){
+				printf("%s\n", rv.value>0?"true":"false");	
 			}
 		}
 		free(line);

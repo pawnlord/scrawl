@@ -9,7 +9,7 @@ typedef enum {
 
 /* tells type of variable */
 typedef enum {
-	TYPE_NUL = 0,
+	TYPE_NUL = 0, TYPE_BOOL = 1,
 	TYPE_INT8 = 8, TYPE_INT16 = 16,
 	TYPE_INT32 = 32, TYPE_INT64 = 64,
 	TYPE_POINTER = sizeof(void*)
@@ -59,6 +59,7 @@ typedef struct {
 	int last_indent;
 	int indent_unit;
 	int running_block;
+	int stop_comparison;
 } state;
 
 /* used in operator functions*/
