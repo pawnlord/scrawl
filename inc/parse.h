@@ -58,7 +58,11 @@ typedef struct {
 	int can_unindent;
 	int last_indent;
 	int indent_unit;
+	int running_block;
 } state;
+
+/* used in operator functions*/
+int parse_tokens(token* tokens, variable* return_value, int line_num);
 
 /* setup for parser */
 int   start_parser();
