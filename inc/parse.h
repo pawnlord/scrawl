@@ -10,9 +10,9 @@ typedef enum {
 /* tells type of variable */
 typedef enum {
 	TYPE_NUL = 0, TYPE_BOOL = 1,
-	TYPE_INT8 = 8, TYPE_INT16 = 16,
-	TYPE_INT32 = 32, TYPE_INT64 = 64,
-	TYPE_POINTER = sizeof(void*)
+	TYPE_INT8 = 2, TYPE_INT16 = 3,
+	TYPE_INT32 = 4, TYPE_INT64 = 5,
+	TYPE_POINTER = 6, TYPE_STRING = 7
 } type;
 
 /* tells type of block */

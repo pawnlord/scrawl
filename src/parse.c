@@ -62,6 +62,10 @@ int isbool(char* s){
 	return (strcmp(s, "true") == 0 || strcmp(s, "false") == 0);
 }
 
+int isstring(char* s){
+	return (s[0] == '"');
+}
+
 int create_onthefly_variable(variable* v){
 	if(isnum(v->identifier[0])){
 		v->value = (void*)atoi(v->identifier);
@@ -79,8 +83,22 @@ int create_onthefly_variable(variable* v){
 		return 1;
 	}
 	if(isbool(v->identifier)){
-		v->value = (void*)strcmp(v->identifier, "false") == 0 ? 0 : 1;
+		v->value = (void*)(strcmp(v->identifier, "false") == 0 ? 0 : 1);
 		v->t = TYPE_BOOL;	
+	}
+	if(isstring(v->identifier)){
+		int length = strlen(v->identifier);
+		char* s = malloc(length-2);
+		if(s!=NULL){
+			char* temp = malloc(length+1);
+			strcpy(temp, v->identifier+1);
+			temp[length-2] = '\0';
+			strcpy(s, temp);
+			v->value = s;
+			v->t = TYPE_STRING;
+			free(temp);
+			return 1;
+		}
 	}
 	return 0;
 }
@@ -95,6 +113,7 @@ void initialize_states(int max_varnum, int max_connum, int max_block){
 		init_variable(&master_state.cons[i], STR_SIZE);
 	}
 	master_state.var_num = 0;
+	
 	master_state.con_num = 0;
 	
 	master_state.block_line_num = malloc(max_block*sizeof(int));
@@ -102,9 +121,7 @@ void initialize_states(int max_varnum, int max_connum, int max_block){
 		master_state.block_line_num[i] = 0;
 	}
 	master_state.lines = malloc(5000);
-	for(int i = 0; i < 5000; i++){
-		master_state.lines[i] = malloc(MAX_LINE_LENGTH);
-	}
+	
 	master_state.block_level = 0;
 
 	master_state.can_unindent = 0;
@@ -141,7 +158,11 @@ int stop_parser() {
 	for(int i = 0; i < master_state.line_count; i++){
 		free(master_state.lines[i]);
 	}
-	free(master_state.lines);
+	if(master_state.lines != NULL){
+		free(master_state.lines);
+	} else{
+		printf("line was null\n");
+	}
 	free(master_state.block_line_num);
 }
 
@@ -197,7 +218,7 @@ int tokenize(char* line, token** tokens){
 	
 	/* constant strings */
 	static const char* alphanumeric = "qwertyuiopasdfghjklzxcvbnm1234567890_";	
-	static const char* numeric = "1234567890";	\
+	static const char* numeric = "1234567890";	
 	static const char* symbols = "!@#$%^&*()-=+{}[]\\;:'\"<>.,";
 	static const char* whitespace = " \t\n";
 	
@@ -292,6 +313,21 @@ int tokenize(char* line, token** tokens){
 			/* copy */
 			(*tokens)[current_token].identifier[current_character] = line[i];
 			current_character++;
+			if(line[i] == '"') {
+				
+				for(i++; ; i++){
+					if(line[i] == 0){
+						printf("TokenError: Unended string %s\n", (*tokens)[current_token].identifier);
+						return 0;
+					}
+					(*tokens)[current_token].identifier[current_character] = line[i];
+					current_character++;
+					if(line[i] == '"'){
+						(*tokens)[current_token].ttype = TOKEN_VAR;
+						break;
+					}
+				}
+			}
 
 			if(line[i] == '=' && line[i+1] != '='){
 				(*tokens)[current_token].identifier[current_character] = 0;
@@ -598,6 +634,23 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 				if(strcmp(tokens[i].identifier, "if") == 0){
 					block = BLOCK_IF;
 					return_value->t=TYPE_NUL;
+				} else if(strcmp(tokens[i].identifier, "print") == 0) {
+					variable var;
+					init_variable(&var, 100);
+					for(i++; tokens[i].ttype != TOKEN_END; i++){
+						strcpy(var.identifier, tokens[i].identifier);
+						getvar(&var);
+						if(var.t == TYPE_INT16 || var.t == TYPE_INT32 || var.t == TYPE_INT64 || var.t == TYPE_INT8 ){
+							printf("%d\n", var.value);
+						} else if (var.t == TYPE_BOOL){
+							printf("%s\n", var.value>0?"true":"false");
+						} else if (var.t == TYPE_NUL){
+							printf("NULL\n");
+						} else if (var.t == TYPE_STRING){
+							printf("%s\n", (char*)var.value);
+						}
+					}
+					i-=1;
 				} else {
 					/* get value if it is a variable */
 					strcpy(return_value->identifier, tokens[i].identifier);
@@ -865,16 +918,21 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 
 /* function to tokenize and parse. This is to be called in interpreter */
 int parse(char* line, variable* return_value, int line_num, int is_newline) {
-	token* tokens;
+	token*       tokens;
 	static int   indentation_unit = 0;
 	static int   last_indentation = 0;
-	int indentation = 0;
+	int          indentation      = 0;
 
 	if(is_newline){
 		/* copy line for later use */
 		master_state.lines[line_num] = malloc(MAX_LINE_LENGTH);
 		strcpy(master_state.lines[line_num], line);
 		master_state.line_count = line_num;
+		for(int i = 0; i < line_num; i++){
+			if(master_state.lines[i] == NULL){
+				master_state.lines[i] = malloc(MAX_LINE_LENGTH);
+			}
+		}
 	}
 	
 	if(tokenize(line, &tokens)){
