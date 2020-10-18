@@ -313,17 +313,37 @@ int tokenize(char* line, token** tokens){
 			/* copy */
 			(*tokens)[current_token].identifier[current_character] = line[i];
 			current_character++;
+			
+			/* if it's a string, it's different*/
 			if(line[i] == '"') {
+				/* separate it from the last operator */
+				if(last_char_type == LAST_OP){
+					current_character--;
+					(*tokens)[current_token].identifier[current_character] = 0;
+					
+					current_character = 0;
+					current_token++;
+					
+					(*tokens)[current_token].identifier = malloc(current_token);
+					/* recopy the character */
+					(*tokens)[current_token].identifier[current_character] = line[i];
+					current_character++;
+				}
+
+				last_char_type=LAST_ALPHA;
+				(*tokens)[current_token].ttype = TOKEN_VAR;
 				
+				/* copy characters */
 				for(i++; ; i++){
 					if(line[i] == 0){
 						printf("TokenError: Unended string %s\n", (*tokens)[current_token].identifier);
 						return 0;
 					}
+				
 					(*tokens)[current_token].identifier[current_character] = line[i];
 					current_character++;
+				
 					if(line[i] == '"'){
-						(*tokens)[current_token].ttype = TOKEN_VAR;
 						break;
 					}
 				}
@@ -375,13 +395,14 @@ int add( token* tokens, variable* return_value, int line_num, int i){
 		return 0;
 	}	
 	int temp_stop_comparison = master_state.stop_comparison;
+
 	master_state.stop_comparison = 1;
 	parse_tokens(tokens+i+1, &rtemp, line_num);
 	master_state.stop_comparison =  temp_stop_comparison;
 	
 
-	if(rtemp.t != TYPE_INT8 && rtemp.t != TYPE_INT16 && rtemp.t != TYPE_INT32){
-		printf("TypeError: invalid rval of '+' operator %s of type %d (needs to be int) (line num %d)\n", rtemp.identifier, rtemp.t, line_num);
+	if(rtemp.t != return_value->t){
+		printf("TypeError: rval and lval type s don't match for '+'! (line num %d)\n",line_num);
 		
 		return_value->value = 0;
 		return_value->t  = 0;
@@ -393,9 +414,28 @@ int add( token* tokens, variable* return_value, int line_num, int i){
 		strcpy(return_value->identifier, tokens[i-1].identifier);
 		getvar(return_value);
 	}
+	
+	if(return_value->t == TYPE_STRING){
+		char* temp = malloc(strlen(return_value->identifier) + strlen(rtemp.identifier) + 1);
 
-	sprintf(return_value->identifier, "%d", (int)return_value->value + (int)rtemp.value);
-	return_value->value = (void*)((int)rtemp.value + (int)return_value->value);
+		strcpy(temp, return_value->value);
+		strcat(temp, rtemp.value);
+
+		sprintf(return_value->identifier, "\"%s\"", temp);
+		return_value->value = temp;
+
+	} else if(return_value->t == TYPE_INT8 || return_value->t == TYPE_INT16 || 
+			return_value->t == TYPE_INT32 || return_value->t == TYPE_INT64 ){
+		sprintf(return_value->identifier, "%d", (int)return_value->value + (int)rtemp.value);
+		return_value->value = (void*)((int)rtemp.value + (int)return_value->value);
+	} else {
+		printf("TypeError: type %d unimplement for '+'! (line num %d)\n", return_value->t, line_num);
+		
+		return_value->value = 0;
+		return_value->t  = 0;
+
+		return 0;	
+	}
 	return 1;
 }
 
@@ -628,7 +668,7 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 				printf("current block info:\nblock_level: %d\nblock_line_num: %d\nblock_type: %d",
 					master_state.block_level, master_state.block_line_num[master_state.block_level], 
 					master_state.block_types[master_state.block_level]);
-				return NULL;
+				return 0;
 			}
 			if(tokens[i].ttype == TOKEN_VAR) {
 				if(strcmp(tokens[i].identifier, "if") == 0){
@@ -837,7 +877,7 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 				printf("current block info:\nblock_level: %d\nblock_line_num: %d\nblock_type: %d",
 					master_state.block_level, master_state.block_line_num[master_state.block_level], 
 					master_state.block_types[master_state.block_level]);
-				return NULL;
+				return 0;
 			}
 			if (tokens[i].ttype == TOKEN_WHITESPACE && i == 0){
 				if(master_state.block_level == 0){

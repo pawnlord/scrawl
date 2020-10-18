@@ -4,7 +4,7 @@
 #include "../inc/parse.h"
 #include "../inc/handlers.h"
 
-char* prompt = "scrawl>>";
+char* prompt = "scrawl> ";
 
 volatile int* exit_loop;
 
