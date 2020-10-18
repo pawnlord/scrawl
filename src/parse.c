@@ -330,9 +330,10 @@ int add( token* tokens, variable* return_value, int line_num, int i){
 
 		return 0;
 	}	
+	int temp_stop_comparison = master_state.stop_comparison;
 	master_state.stop_comparison = 1;
 	parse_tokens(tokens+i+1, &rtemp, line_num);
-	master_state.stop_comparison = 0;
+	master_state.stop_comparison =  temp_stop_comparison;
 	
 
 	if(rtemp.t != TYPE_INT8 && rtemp.t != TYPE_INT16 && rtemp.t != TYPE_INT32){
@@ -365,9 +366,10 @@ int subtract( token* tokens, variable* return_value, int line_num, int i){
 
 		return 0;	
 	}	
+	int temp_stop_comparison = master_state.stop_comparison;
 	master_state.stop_comparison = 1;
 	parse_tokens(tokens+i+1, &rtemp, line_num);
-	master_state.stop_comparison = 0;
+	master_state.stop_comparison =  temp_stop_comparison;
 
 	if(rtemp.t != TYPE_INT8 && rtemp.t != TYPE_INT16 && rtemp.t != TYPE_INT32){
 		printf("TypeError: invalid rval of '-' operator %s of type %d (needs to be int) (line num %d)\n", rtemp.identifier, rtemp.t, line_num);
@@ -400,9 +402,10 @@ int multiply( token* tokens, variable* return_value, int line_num, int i){
 
 		return 0;	
 	}	
+	int temp_stop_comparison = master_state.stop_comparison;
 	master_state.stop_comparison = 1;
 	parse_tokens(tokens+i+1, &rtemp, line_num);
-	master_state.stop_comparison = 0;
+	master_state.stop_comparison = temp_stop_comparison;
 	
 
 	if(rtemp.t != TYPE_INT8 && rtemp.t != TYPE_INT16 && rtemp.t != TYPE_INT32){
@@ -531,7 +534,8 @@ int equal_to( token* tokens, variable* return_value, int line_num, int i){
 
 int run_if(token* tokens, variable* return_value, int line_num){
 	char* if_line = malloc(STR_SIZE);
-	strcpy(if_line, master_state.lines[master_state.block_line_num[master_state.block_level]]);
+	int if_line_number = master_state.block_line_num[master_state.block_level];
+	strcpy(if_line, master_state.lines[if_line_number]);
 	
 	token* if_tokens;
 	tokenize(if_line, &if_tokens);
@@ -548,8 +552,21 @@ int run_if(token* tokens, variable* return_value, int line_num){
 	}
 	
 	if_tokens[i-1].ttype = TOKEN_END;
+	
+	int temp_level = master_state.block_level;
+	master_state.block_level = 0;
+
 	variable evaled_expression;
-	parse_tokens(if_tokens, &evaled_expression, master_state.block_line_num[master_state.block_level]);
+	parse_tokens(if_tokens+1, &evaled_expression, if_line_number);
+	
+	master_state.block_level = temp_level;
+	
+	if(evaled_expression.value){
+		variable ret;
+		for (int i = if_line_number+1; i < line_num; i++){
+			parse(master_state.lines[i], &ret, i, 0);
+		}
+	} 
 
 	free(if_line);
 	return 1;
@@ -572,6 +589,7 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 			if(tokens[i].ttype == TOKEN_VAR) {
 				if(strcmp(tokens[i].identifier, "if") == 0){
 					block = BLOCK_IF;
+					return_value->t=TYPE_NUL;
 				} else {
 					/* get value if it is a variable */
 					strcpy(return_value->identifier, tokens[i].identifier);
@@ -579,12 +597,12 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 				}
 			} else if (tokens[i].ttype == TOKEN_OP){
 				if (strcmp(tokens[i].identifier, ":") == 0){
+
+					return_value->value = 0;
+					return_value->t  = 0;
 					if(block == BLOCK_NONE){
 						/* no block, error */
 						printf("SyntaxError: No block started (line num %d).\n", line_num);
-						
-						return_value->value = 0;
-						return_value->t  = 0;
 
 						return 0;
 					}
@@ -603,15 +621,6 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 					
 					parse_tokens(tokens+i+1, &rtemp, line_num);
 					
-					if(rtemp.t != TYPE_INT8 && rtemp.t != TYPE_INT16 && rtemp.t != TYPE_INT32){
-						/* rvalue bad, error, set all to zero */
-						printf("TypeError: invalid rval of '=' operator %s of type %d (line num %d)\n", rtemp.identifier, rtemp.t, line_num);
-						
-						return_value->value = 0;
-						return_value->t  = 0;
-						
-						break;	
-					}
 					if(i == 0){
 						/* too many lvals, set all to zero */
 						printf("TokenError: No lval for '=' operator (line num %d)\n", line_num);
@@ -675,6 +684,7 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 						strcpy(return_value->identifier, tokens[i-1].identifier);
 						autoset(return_value);
 					}
+					break;
 				}else if((strcmp(tokens[i].identifier, "*") == 0 ||
 						(is_autoset = !strcmp(tokens[i].identifier, "*="))) && block == BLOCK_NONE) {
 
@@ -687,6 +697,7 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 						strcpy(return_value->identifier, tokens[i-1].identifier);
 						autoset(return_value);
 					}
+					break;
 				} else if (strcmp(tokens[i].identifier, "-") == 0 && !last_token_is_number(tokens, i) && block == BLOCK_NONE) {
 					i++;
 					variable rtemp;
@@ -721,6 +732,7 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 						strcpy(return_value->identifier, tokens[i-1].identifier);
 						autoset(return_value);
 					}
+					break;
 				} else if(master_state.stop_comparison){
 					break;
 				} else if(strcmp(tokens[i].identifier, "<") == 0 && block == BLOCK_NONE) {
@@ -758,6 +770,7 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 			}
 		}
 	} else {
+		int block_ended = 0, temp_lastindent = 0;
 		for(i = 0; tokens[i].ttype != TOKEN_END; i++){
 			if(strcmp(tokens[i].identifier, "_debugblocks") == 0){
 				printf("current block info:\nblock_level: %d\nblock_line_num: %d\nblock_type: %d",
@@ -791,51 +804,41 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 					break;	
 				}
 				if(indentation/master_state.indent_unit < master_state.block_level){
-					/* 2 possibilities: 
-					* - correct end of block
-					* - end of block too early */
-					if(master_state.last_indent/master_state.indent_unit < master_state.block_level){
-						/* unindent too early */
-						printf("IndentError: need body to block (line num %d)\n", line_num);
-
-						return_value->value = 0;
-						return_value->t  = 0;
-
-						break;
-					} else {
-
-						if(master_state.block_types[master_state.block_level] == BLOCK_IF){
-							run_if(tokens, return_value, line_num);
-						}
-						master_state.block_level-=1;
-						master_state.running_block = 1;
-					}
+					block_ended = 1;
 				}
+				temp_lastindent = master_state.last_indent;
 				master_state.last_indent = indentation;
 				// printf("indentation %d indent_unit %d last_indent %d\n", indentation, master_state.indent_unit, master_state.last_indent);
 			} 
 			if (tokens[i].ttype != TOKEN_WHITESPACE && i == 0){
 				/* set last indent if we wouldn't otherwise */
-				if(0 < master_state.block_level){
-					if(master_state.indent_unit == 0 ||master_state.last_indent/master_state.indent_unit < master_state.block_level){
-						/* unindent too early */
-						printf("IndentError: need body to block (line num %d)\n", line_num);
-
-						return_value->value = 0;
-						return_value->t  = 0;
-
-						break;
-					} else {
-						printf("hello\n");
-						if(master_state.block_types[master_state.block_level] == BLOCK_IF){
-							run_if(tokens, return_value, line_num);
-						}
-						master_state.block_level-=1;
-						master_state.running_block = 1;
-					}
-				}
+				block_ended = 1;
+				temp_lastindent = master_state.last_indent;
 				master_state.last_indent = 0;
 			}
+		}
+		if(i==0){temp_lastindent = master_state.last_indent;}
+		if(i == 0 || block_ended){
+			/* 2 possibilities: 
+			* - correct end of block
+			* - end of block too early */
+			if(master_state.indent_unit == 0 || temp_lastindent/master_state.indent_unit < master_state.block_level){
+				/* unindent too early */
+				printf("IndentError: need body to block (line num %d)\n", line_num);
+
+				return_value->value = 0;
+				return_value->t  = 0;
+
+				return 0;
+			} else {
+
+				master_state.running_block = 1;
+				if(master_state.block_types[master_state.block_level] == BLOCK_IF){
+					run_if(tokens, return_value, line_num);
+				}
+				master_state.block_level-=1;
+			}
+			parse_tokens(tokens, return_value, line_num);
 		}
 	}
 	
@@ -853,16 +856,19 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 
 
 /* function to tokenize and parse. This is to be called in interpreter */
-int parse(char* line, variable* return_value, int line_num){
+int parse(char* line, variable* return_value, int line_num, int is_newline) {
 	token* tokens;
 	static int   indentation_unit = 0;
 	static int   last_indentation = 0;
 	int indentation = 0;
 
-	/* copy line for later use */
-	master_state.lines[line_num] = malloc(MAX_LINE_LENGTH);
-	strcpy(master_state.lines[line_num], line);
-	master_state.line_count = line_num;
+	if(is_newline){
+		/* copy line for later use */
+		master_state.lines[line_num] = malloc(MAX_LINE_LENGTH);
+		strcpy(master_state.lines[line_num], line);
+		master_state.line_count = line_num;
+	}
+	
 	if(tokenize(line, &tokens)){
 		parse_tokens(tokens, return_value, line_num);
 	} else{

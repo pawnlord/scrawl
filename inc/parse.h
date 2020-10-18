@@ -69,7 +69,7 @@ int parse_tokens(token* tokens, variable* return_value, int line_num);
 int   start_parser();
 
 /* actual parse function */
-int  parse(char* line, variable* return_value, int line_num);
+int  parse(char* line, variable* return_value, int line_num, int is_newline);
 
 /* "stack" simulation */
 int   push_back_master_state();

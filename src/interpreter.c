@@ -50,7 +50,7 @@ int main(int argc, char** argv){
 			variable rv;
 			rv.t = TYPE_NUL;
 			
-			parse(line, &rv, line_num);
+			parse(line, &rv, line_num, 1);
 
 			
 			line_num++;	
