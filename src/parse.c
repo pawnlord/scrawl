@@ -58,6 +58,10 @@ int isnum(char c){
 	return strchr(numeric, c) != NULL;
 }
 
+int isbool(char* s){
+	return (strcmp(s, "true") == 0 || strcmp(s, "false") == 0);
+}
+
 int create_onthefly_variable(variable* v){
 	if(isnum(v->identifier[0])){
 		v->value = (void*)atoi(v->identifier);
@@ -73,6 +77,10 @@ int create_onthefly_variable(variable* v){
 			exit(EXIT_FAILURE);
 		}
 		return 1;
+	}
+	if(isbool(v->identifier)){
+		v->value = (void*)strcmp(v->identifier, "false") == 0 ? 0 : 1;
+		v->t = TYPE_BOOL;	
 	}
 	return 0;
 }
