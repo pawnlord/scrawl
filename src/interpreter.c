@@ -35,7 +35,7 @@ int main(int argc, char** argv){
 		start_parser();
 
 		/* introduction */
-		printf("Scrawl Can Rarely Automate With Little-effort (scrawl)\nversion 0.5.2 - type help for general commands\n");
+		printf("Scrawl Can Rarely Automate With Little-effort (scrawl)\nversion 0.5.3 - type help for general commands\n");
 		
 		/* main loop */
 		while(strcmp(line, "exit\n") && !(*exit_loop)){

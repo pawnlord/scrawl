@@ -307,8 +307,6 @@ int tokenize(char* line, token** tokens){
 				(*tokens)[current_token].ttype = TOKEN_OP;
 			}
 			
-			/* set last_char_type accordingly */
-			last_char_type = LAST_OP;
 			
 			/* copy */
 			(*tokens)[current_token].identifier[current_character] = line[i];
@@ -349,6 +347,9 @@ int tokenize(char* line, token** tokens){
 				}
 			}
 
+			/* set last_char_type accordingly */
+			last_char_type = LAST_OP;
+
 			if(line[i] == '=' && line[i+1] != '='){
 				(*tokens)[current_token].identifier[current_character] = 0;
 				
@@ -356,7 +357,7 @@ int tokenize(char* line, token** tokens){
 				current_token++;
 				
 				(*tokens)[current_token].identifier = malloc(current_token);
-				(*tokens)[current_token].ttype = TOKEN_OP;
+				(*tokens)[current_token].ttype = TOKEN_VAR;
 				
 			}
 
@@ -402,8 +403,7 @@ int add( token* tokens, variable* return_value, int line_num, int i){
 	
 
 	if(rtemp.t != return_value->t){
-		printf("TypeError: rval and lval type s don't match for '+'! (line num %d)\n",line_num);
-		
+		printf("TypeError: rval and lval types don't match for '+'! (line num %d)\n",line_num);
 		return_value->value = 0;
 		return_value->t  = 0;
 
