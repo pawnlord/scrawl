@@ -103,7 +103,7 @@ int create_onthefly_variable(variable* v){
 	return 0;
 }
 
-void initialize_states(int max_varnum, int max_connum, int max_block){
+void initialize_states(int max_varnum, int max_connum, int max_block, volatile int* exit_loop){
 	master_state.vars = malloc(max_varnum*sizeof(variable));
 	for(int i = 0; i < max_varnum; i++){
 		init_variable(&master_state.vars[i], STR_SIZE);
@@ -139,6 +139,7 @@ void initialize_states(int max_varnum, int max_connum, int max_block){
 	master_state.running_block = 1;
 
 	master_state.stop_comparison= 0;
+	master_state.exit_loop= exit_loop;
 }
 
 void init_ls(line_structure* ls) {
@@ -147,8 +148,8 @@ void init_ls(line_structure* ls) {
 	ls->inited = 1;
 }
 
-int start_parser() {
-	initialize_states(STRPTR_SIZE, STRPTR_SIZE, STR_SIZE);
+int start_parser(volatile int* exit_loop) {
+	initialize_states(STRPTR_SIZE, STRPTR_SIZE, STR_SIZE, exit_loop);
 }
 
 int stop_parser() {
@@ -539,7 +540,7 @@ int less_than( token* tokens, variable* return_value, int line_num, int i){
 		strcpy(return_value->identifier, tokens[i-1].identifier);
 		getvar(return_value);
 	}
-
+	
 	sprintf(return_value->identifier, "%d", (int)return_value->value < (int)rtemp.value);
 	return_value->value = (void*)((int)return_value->value < (int)rtemp.value);
 	return_value->t = TYPE_BOOL;
@@ -656,6 +657,48 @@ int run_if(token* tokens, variable* return_value, int line_num){
 	return 1;
 }
 
+int run_while(token* tokens, variable* return_value, int line_num){
+	char* while_line = malloc(STR_SIZE);
+	int while_line_number = master_state.block_line_num[master_state.block_level];
+	strcpy(while_line, master_state.lines[while_line_number]);
+	
+	token* while_tokens;
+	tokenize(while_line, &while_tokens);
+	
+	int i;
+	for(i = 0; while_tokens[i].ttype != TOKEN_END; i++);
+	
+	if(i == 0) {
+		/* huh? */
+		printf("IndentError: indent not in block (line num %d)\n", line_num);
+		return_value->value = 0;
+		return_value->t  = 0;
+		return 0;	
+	}
+	
+	while_tokens[i-1].ttype = TOKEN_END;
+	
+	int temp_level = master_state.block_level;
+	master_state.block_level = 0;
+
+	variable evaled_expression;
+	variable ret;
+	parse_tokens(while_tokens+1, &evaled_expression, while_line_number);
+	while(evaled_expression.value && !(*master_state.exit_loop)){
+		
+		master_state.block_level = temp_level;
+	
+		for (int i = while_line_number+1; i < line_num; i++){
+			parse(master_state.lines[i], &ret, i, 0);
+		}
+		parse_tokens(while_tokens+1, &evaled_expression, while_line_number);
+		
+	} 
+
+	free(while_line);
+	return 1;
+}
+
 int parse_tokens(token* tokens, variable* return_value, int line_num){
 	init_variable(return_value, 100);
 	int is_autoset;
@@ -673,6 +716,9 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 			if(tokens[i].ttype == TOKEN_VAR) {
 				if(strcmp(tokens[i].identifier, "if") == 0){
 					block = BLOCK_IF;
+					return_value->t=TYPE_NUL;
+				} if(strcmp(tokens[i].identifier, "while") == 0){
+					block = BLOCK_WHILE;
 					return_value->t=TYPE_NUL;
 				} else if(strcmp(tokens[i].identifier, "print") == 0) {
 					variable var;
@@ -713,7 +759,7 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 					master_state.block_types[master_state.block_level] = block;
 					master_state.block_line_num[master_state.block_level] = line_num;
 					master_state.can_unindent = 0;
-					if(block = BLOCK_IF){
+					if(block == BLOCK_IF || block == BLOCK_WHILE){
 						master_state.running_block = 0;
 					}
 
@@ -936,6 +982,10 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 				master_state.running_block = 1;
 				if(master_state.block_types[master_state.block_level] == BLOCK_IF){
 					run_if(tokens, return_value, line_num);
+				}
+				
+				if(master_state.block_types[master_state.block_level] == BLOCK_WHILE){
+					run_while(tokens, return_value, line_num);
 				}
 				master_state.block_level-=1;
 			}

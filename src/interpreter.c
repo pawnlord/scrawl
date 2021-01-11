@@ -32,7 +32,7 @@ int main(int argc, char** argv){
 
 		/* input line */
 		char* line = malloc(MAX_LINE_LENGTH);
-		start_parser();
+		start_parser(exit_loop);
 
 		/* introduction */
 		printf("Scrawl Can Rarely Automate With Little-effort (scrawl)\nversion 0.5.3 - type help for general commands\n");

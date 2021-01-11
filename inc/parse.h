@@ -60,13 +60,14 @@ typedef struct {
 	int indent_unit;
 	int running_block;
 	int stop_comparison;
+	volatile int* exit_loop;
 } state;
 
 /* used in operator functions*/
 int parse_tokens(token* tokens, variable* return_value, int line_num);
 
 /* setup for parser */
-int   start_parser();
+int   start_parser(volatile int* exit_loop);
 
 /* actual parse function */
 int  parse(char* line, variable* return_value, int line_num, int is_newline);
