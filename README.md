@@ -10,19 +10,18 @@ Building should be universal on all platforms.
 There is no feeding in a file yet. That should be comming eventually.  
 Just run the command and a prompt will appear.
 
-## operations  
-Currently, there aren't any functions. But I do have variables and operators (`+`, `-`, `*`, `=`) working.  
-Division hasn't been added yet since that would require floats  
-  
-example:  
-```
-# comment
-i = 1 # make new variable i, set variable i to 1
-a = i + 1 # make new variable a, set variable a to 1 more than i (2)
-i += 2 # set i to 2 more than i (3)
-a = i - 1 # set a to 1 less than i (2)
-i -= 2 # set i to 2 less than i (1)
-i = -1 # set i to a negative (-1)
-a = i * 2 # set a to 2 times i (-2)
-i *= 3 # set i to 2 times i (-3)
-```
+# TODO
+[x] Operations: Addition, Subtraction, Multiplication
+ - Todo: Division, Order of Operations
+[x] Comparison: Less than, Greater than, Equal-to
+ - Todo: Equal-to versions
+[x] Blocks: if, while
+ - Todo: for, foreach (after data structures)
+[x] Built-in Functions: print, system
+ - Todo: Input
+[ ] User-Defined Functions
+[ ] Simple Data Structure: Array or List
+[ ] Prove usability with Turing machine and other examples
+[ ] General Rewrite
+ - Move functions out of parse.c
+ - Remove repetition wherever applicable and practical
