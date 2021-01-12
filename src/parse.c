@@ -3,6 +3,7 @@
 #include <string.h>
 #include <math.h>
 #include "../inc/parse.h"
+#include "../inc/functions.h"
 #define STR_SIZE 255
 #define STRPTR_SIZE 255
 
@@ -46,6 +47,7 @@ void clear_strptr(char*** strptr) {
 
 void init_variable(variable* var, int name_size){
 	var->identifier = malloc(name_size);
+	perror("");
 	
 	for(int i = 0; i < name_size; i++){
 		var->identifier[i] = 0;
@@ -67,6 +69,10 @@ int isstring(char* s){
 }
 
 int create_onthefly_variable(variable* v){
+	if(strcmp("", v->identifier) == 0){
+		v->value = 0;
+		v->t = TYPE_NUL;
+	}
 	if(isnum(v->identifier[0])){
 		v->value = (void*)atoi(v->identifier);
 		if((int)v->value <= 255) v->t = TYPE_INT8;
@@ -140,6 +146,9 @@ void initialize_states(int max_varnum, int max_connum, int max_block, volatile i
 
 	master_state.stop_comparison= 0;
 	master_state.exit_loop= exit_loop;
+	master_state.functions = (function_t*)(malloc(255*sizeof(function_t)));
+	make_function(&master_state.functions[0], funcprint, NULL, "print"); /* TODO: REMEMBER THAT NULL MEANS IT TAKES ALL POSSIBLE ARGUEMENTS*/
+	
 }
 
 void init_ls(line_structure* ls) {
@@ -213,10 +222,16 @@ int getvar(variable* var){
 int tokenize(char* line, token** tokens){
 	int current_token = 0;
 	int current_character = 0;
+	printf("Token1 \n");
+	printf("%d \n", *tokens);
+	if((*tokens) == 255)
+		(*tokens) = (token*)malloc(sizeof(token) * 100);
+	printf("%d \n", *tokens);
+	perror("");
+	if((*tokens))
+		(*tokens)[current_token].identifier = malloc(STR_SIZE);
 	
-	(*tokens) = (token*)malloc(sizeof(token) * 100);
-	(*tokens)[current_token].identifier = malloc(STR_SIZE);
-	
+	printf("Token1 \n");
 	/* constant strings */
 	static const char* alphanumeric = "qwertyuiopasdfghjklzxcvbnm1234567890_";	
 	static const char* numeric = "1234567890";	
@@ -721,22 +736,21 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 					block = BLOCK_WHILE;
 					return_value->t=TYPE_NUL;
 				} else if(strcmp(tokens[i].identifier, "print") == 0) {
-					variable var;
-					init_variable(&var, 100);
-					for(i++; tokens[i].ttype != TOKEN_END; i++){
-						strcpy(var.identifier, tokens[i].identifier);
-						getvar(&var);
-						if(var.t == TYPE_INT16 || var.t == TYPE_INT32 || var.t == TYPE_INT64 || var.t == TYPE_INT8 ){
-							printf("%d\n", var.value);
-						} else if (var.t == TYPE_BOOL){
-							printf("%s\n", var.value>0?"true":"false");
-						} else if (var.t == TYPE_NUL){
-							printf("NULL\n");
-						} else if (var.t == TYPE_STRING){
-							printf("%s\n", (char*)var.value);
-						}
+					int len = 0;
+					for(;tokens[len+i].ttype != TOKEN_END; len++ );
+					
+					printf("len %d\n", len*sizeof(variable));
+					variable* v = (variable*)malloc(len*sizeof(variable));
+					i++;
+					int temp = i;
+					for(;tokens[i].ttype != TOKEN_END; i++ ){
+						strcpy(v[i-temp].identifier, tokens[i].identifier);
+						getvar(&v[i-temp]);
 					}
-					i-=1;
+					v[i-temp].t = TYPE_NUL;
+					master_state.functions[0].f(&v);
+					free(v);
+					return 0;
 				} else {
 					/* get value if it is a variable */
 					strcpy(return_value->identifier, tokens[i].identifier);
@@ -1012,6 +1026,7 @@ int parse(char* line, variable* return_value, int line_num, int is_newline) {
 	static int   indentation_unit = 0;
 	static int   last_indentation = 0;
 	int          indentation      = 0;
+	printf("EASDFHDSH1\n");
 
 	if(is_newline){
 		/* copy line for later use */
@@ -1026,7 +1041,10 @@ int parse(char* line, variable* return_value, int line_num, int is_newline) {
 	}
 	
 	if(tokenize(line, &tokens)){
+		printf("EASDFHDSH1\n");
+		printf("%d\n", tokens);
 		parse_tokens(tokens, return_value, line_num);
+		printf("%d\n", tokens);
 	} else{
 		return 0;
 	}
