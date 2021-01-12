@@ -47,8 +47,7 @@ void clear_strptr(char*** strptr) {
 
 void init_variable(variable* var, int name_size){
 	var->identifier = malloc(name_size);
-	perror("");
-	
+
 	for(int i = 0; i < name_size; i++){
 		var->identifier[i] = 0;
 	}
@@ -222,16 +221,9 @@ int getvar(variable* var){
 int tokenize(char* line, token** tokens){
 	int current_token = 0;
 	int current_character = 0;
-	printf("Token1 \n");
-	printf("%d \n", *tokens);
-	if((*tokens) == 255)
-		(*tokens) = (token*)malloc(sizeof(token) * 100);
-	printf("%d \n", *tokens);
-	perror("");
-	if((*tokens))
-		(*tokens)[current_token].identifier = malloc(STR_SIZE);
+	(*tokens) = (token*)malloc(sizeof(token) * 100);
+	(*tokens)[current_token].identifier = malloc(STR_SIZE);
 	
-	printf("Token1 \n");
 	/* constant strings */
 	static const char* alphanumeric = "qwertyuiopasdfghjklzxcvbnm1234567890_";	
 	static const char* numeric = "1234567890";	
@@ -739,16 +731,19 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 					int len = 0;
 					for(;tokens[len+i].ttype != TOKEN_END; len++ );
 					
-					printf("len %d\n", len*sizeof(variable));
 					variable* v = (variable*)malloc(len*sizeof(variable));
 					i++;
 					int temp = i;
 					for(;tokens[i].ttype != TOKEN_END; i++ ){
+						v[i-temp].identifier = malloc(STR_SIZE);
 						strcpy(v[i-temp].identifier, tokens[i].identifier);
 						getvar(&v[i-temp]);
 					}
 					v[i-temp].t = TYPE_NUL;
 					master_state.functions[0].f(&v);
+					for(int j = 0; v[j].t = TYPE_NUL; j++ ){
+						free(v[j].identifier);
+					}
 					free(v);
 					return 0;
 				} else {
@@ -1026,7 +1021,6 @@ int parse(char* line, variable* return_value, int line_num, int is_newline) {
 	static int   indentation_unit = 0;
 	static int   last_indentation = 0;
 	int          indentation      = 0;
-	printf("EASDFHDSH1\n");
 
 	if(is_newline){
 		/* copy line for later use */
@@ -1041,10 +1035,11 @@ int parse(char* line, variable* return_value, int line_num, int is_newline) {
 	}
 	
 	if(tokenize(line, &tokens)){
-		printf("EASDFHDSH1\n");
-		printf("%d\n", tokens);
 		parse_tokens(tokens, return_value, line_num);
-		printf("%d\n", tokens);
+		for(int i = 0; tokens[i].ttype != TOKEN_END; i++){
+			free(tokens[i].identifier);
+		}
+		free(tokens);
 	} else{
 		return 0;
 	}
