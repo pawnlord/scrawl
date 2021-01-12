@@ -148,6 +148,10 @@ void initialize_states(int max_varnum, int max_connum, int max_block, volatile i
 	master_state.functions = (function_t*)(malloc(255*sizeof(function_t)));
 	make_function(&master_state.functions[0], funcprint, NULL, "print"); /* TODO: REMEMBER THAT NULL MEANS IT TAKES ALL POSSIBLE ARGUEMENTS*/
 	
+	make_function(&master_state.functions[1], funcsystem, NULL, "system"); /* TODO: REMEMBER THAT NULL MEANS IT TAKES ALL POSSIBLE ARGUEMENTS*/
+	
+	make_function(&master_state.functions[2], (function)NULL, NULL, ""); /* TODO: REMEMBER THAT NULL MEANS IT TAKES ALL POSSIBLE ARGUEMENTS*/
+		
 }
 
 void init_ls(line_structure* ls) {
@@ -180,6 +184,14 @@ void reset_ls(line_structure* ls) {
 }
 
 int str_in_varlist(char* str, variable* list){
+	for(int i = 0; strcmp(list[i].identifier, ""); i++){
+		if(strcmp(list[i].identifier, str) == 0){
+			return i;
+		}
+	}
+	return -1;
+}
+int str_in_funclist(char* str, function_t* list){
 	for(int i = 0; strcmp(list[i].identifier, ""); i++){
 		if(strcmp(list[i].identifier, str) == 0){
 			return i;
@@ -724,10 +736,10 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 				if(strcmp(tokens[i].identifier, "if") == 0){
 					block = BLOCK_IF;
 					return_value->t=TYPE_NUL;
-				} if(strcmp(tokens[i].identifier, "while") == 0){
+				} else if(strcmp(tokens[i].identifier, "while") == 0){
 					block = BLOCK_WHILE;
 					return_value->t=TYPE_NUL;
-				} else if(strcmp(tokens[i].identifier, "print") == 0) {
+				} else if(str_in_funclist(tokens[i].identifier, master_state.functions) >= 0) {
 					int len = 0;
 					for(;tokens[len+i].ttype != TOKEN_END; len++ );
 					
@@ -740,7 +752,11 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 						getvar(&v[i-temp]);
 					}
 					v[i-temp].t = TYPE_NUL;
-					master_state.functions[0].f(&v);
+					for(int j = 0; master_state.functions[j].f != NULL; j++){
+						if(strcmp(master_state.functions[j].identifier, tokens[temp-1].identifier) == 0) {
+							master_state.functions[j].f(&v);
+						}
+					}
 					for(int j = 0; v[j].t = TYPE_NUL; j++ ){
 						free(v[j].identifier);
 					}
