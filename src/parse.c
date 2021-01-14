@@ -332,6 +332,21 @@ int tokenize(char* line, token** tokens){
 			(*tokens)[current_token].identifier[current_character] = line[i];
 			current_character++;
 			
+			
+
+			/* set last_char_type accordingly */
+			last_char_type = LAST_OP;
+
+			if(line[i] == '=' && line[i+1] != '='){
+				(*tokens)[current_token].identifier[current_character] = 0;
+				
+				current_character = 0;
+				current_token++;
+				
+				(*tokens)[current_token].identifier = malloc(current_token);
+				(*tokens)[current_token].ttype = TOKEN_VAR;
+				
+			}
 			/* if it's a string, it's different*/
 			if(line[i] == '"') {
 				/* separate it from the last operator */
@@ -365,20 +380,6 @@ int tokenize(char* line, token** tokens){
 						break;
 					}
 				}
-			}
-
-			/* set last_char_type accordingly */
-			last_char_type = LAST_OP;
-
-			if(line[i] == '=' && line[i+1] != '='){
-				(*tokens)[current_token].identifier[current_character] = 0;
-				
-				current_character = 0;
-				current_token++;
-				
-				(*tokens)[current_token].identifier = malloc(current_token);
-				(*tokens)[current_token].ttype = TOKEN_VAR;
-				
 			}
 
 			/* start line if not started */
@@ -741,19 +742,50 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 					return_value->t=TYPE_NUL;
 				} else if(str_in_funclist(tokens[i].identifier, master_state.functions) >= 0) {
 					int len = 0;
-					for(;tokens[len+i].ttype != TOKEN_END; len++ );
+					int fname_index = i;
+					int is_beginning = 1;
+					int beginning, end, param_num = 0;
+					int k = 0;
+					variable* v ;
 					
-					variable* v = (variable*)malloc(len*sizeof(variable));
-					i++;
-					int temp = i;
-					for(;tokens[i].ttype != TOKEN_END; i++ ){
-						v[i-temp].identifier = malloc(STR_SIZE);
-						strcpy(v[i-temp].identifier, tokens[i].identifier);
-						getvar(&v[i-temp]);
+					for(k = i+1; tokens[k].ttype != TOKEN_END; k++){
+						if(strcmp(tokens[k].identifier, ",") == 0 || strcmp(tokens[k].identifier, ")") == 0){
+							len += 1;
+						}
 					}
-					v[i-temp].t = TYPE_NUL;
+					v = (variable*)malloc(len*sizeof(variable));
+					k = 0;
+					for(k = i+1; tokens[k].ttype != TOKEN_END; k++){
+						if(is_beginning){
+							if(strcmp(tokens[k].identifier, "(") != 0){
+								/* no opener, error */
+								printf("SyntaxError: Expected '(' (line num %d).\n", line_num);
+
+								return 0;
+							}
+							beginning = k;
+							is_beginning = 0;
+						}
+						else if(tokens[k].ttype == TOKEN_WHITESPACE){
+							if(strcmp(tokens[beginning].identifier, ",") == 0){
+								beginning = k;
+							}
+						}
+						else if(strcmp(tokens[k].identifier, ",") == 0 || strcmp(tokens[k].identifier, ")") == 0){
+							end = k;
+							token temp = tokens[end];
+							tokens[end].ttype = TOKEN_END;
+							parse_tokens(tokens+beginning, &(v[param_num]), line_num);
+							param_num++;
+							tokens[end].ttype = temp.ttype;
+							beginning = k;
+						}
+					}
+					
+					v[param_num].t = TYPE_NUL;
 					for(int j = 0; master_state.functions[j].f != NULL; j++){
-						if(strcmp(master_state.functions[j].identifier, tokens[temp-1].identifier) == 0) {
+						
+						if(strcmp(master_state.functions[j].identifier, tokens[fname_index].identifier) == 0) {
 							master_state.functions[j].f(&v);
 						}
 					}
