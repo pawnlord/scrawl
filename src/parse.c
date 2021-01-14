@@ -744,7 +744,7 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 					int len = 0;
 					int fname_index = i;
 					int is_beginning = 1;
-					int beginning, end, param_num = 0;
+					int beginning, end = -1, param_num = 0;
 					int k = 0;
 					variable* v ;
 					
@@ -757,10 +757,14 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 					k = 0;
 					for(k = i+1; tokens[k].ttype != TOKEN_END; k++){
 						if(is_beginning){
+							if(strcmp(tokens[k].identifier, "()") == 0){
+								/* no parameters, leave */
+								end = 0;
+								break;
+							}
 							if(strcmp(tokens[k].identifier, "(") != 0){
 								/* no opener, error */
-								printf("SyntaxError: Expected '(' (line num %d).\n", line_num);
-
+								printf("SyntaxError: Expected '(' (line num %d).\n", line_num, tokens[k].identifier);
 								return 0;
 							}
 							beginning = k;
@@ -778,10 +782,17 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 							parse_tokens(tokens+beginning, &(v[param_num]), line_num);
 							param_num++;
 							tokens[end].ttype = temp.ttype;
-							beginning = k;
+							beginning = (tokens[k].identifier[0]==',')?k:beginning;
 						}
 					}
-					
+					if(end == beginning || end == -1){
+						/* no closer, error */
+						printf("SyntaxError: Expected ')' (line num %d).\n", line_num);
+						return 0;
+					} if(end == beginning+1){
+						printf("SyntaxError: Expected statement after ',' (line num %d).\n", line_num);
+						return 0;
+					}
 					v[param_num].t = TYPE_NUL;
 					for(int j = 0; master_state.functions[j].f != NULL; j++){
 						
