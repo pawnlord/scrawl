@@ -146,12 +146,15 @@ void initialize_states(int max_varnum, int max_connum, int max_block, volatile i
 	master_state.stop_comparison= 0;
 	master_state.exit_loop= exit_loop;
 	master_state.functions = (function_t*)(malloc(255*sizeof(function_t)));
+	/* #region: bind all functions */
 	make_function(&master_state.functions[0], funcprint, NULL, "print"); /* TODO: REMEMBER THAT NULL MEANS IT TAKES ALL POSSIBLE ARGUEMENTS*/
 	
 	make_function(&master_state.functions[1], funcsystem, NULL, "system"); /* TODO: REMEMBER THAT NULL MEANS IT TAKES ALL POSSIBLE ARGUEMENTS*/
 	
-	make_function(&master_state.functions[2], (function)NULL, NULL, ""); /* TODO: REMEMBER THAT NULL MEANS IT TAKES ALL POSSIBLE ARGUEMENTS*/
-		
+	make_function(&master_state.functions[2], functypeof, NULL, "typeof"); /* TODO: REMEMBER THAT NULL MEANS IT TAKES ALL POSSIBLE ARGUEMENTS*/
+	
+	make_function(&master_state.functions[3], (function)NULL, NULL, ""); /* TODO: REMEMBER THAT NULL MEANS IT TAKES ALL POSSIBLE ARGUEMENTS*/
+	/* #endregion: bind all functions */
 }
 
 void init_ls(line_structure* ls) {
@@ -895,8 +898,9 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 					}
 					break;
 
-				}
-				else if((strcmp(tokens[i].identifier, "+") == 0 ||
+				} else if(strcmp(tokens[i].identifier, "[") == 0){
+					printf("Found list.\n");
+				}else if((strcmp(tokens[i].identifier, "+") == 0 ||
 						(is_autoset = !strcmp(tokens[i].identifier, "+="))) && block == BLOCK_NONE) {
 
 					if (!add(tokens, return_value, line_num, i)){

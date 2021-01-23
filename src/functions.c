@@ -26,6 +26,17 @@ variable funcprint(variable** params_ref){
     v.value = 0;
     return v;
 }
+variable functypeof(variable** params_ref){
+    variable* params = *params_ref;
+    for(int i = 0; params[i].t != TYPE_NUL; i++){
+        printf("%d\n", params[i].t);
+    }
+    variable v;
+    v.identifier = "";
+    v.t = TYPE_NUL;
+    v.value = 0;
+    return v;
+}
 variable funcsystem(variable** params_ref){
     variable* params = *params_ref;
     char* command = malloc(1000);
