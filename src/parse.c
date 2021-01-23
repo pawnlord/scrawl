@@ -798,7 +798,9 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 					return_value->t=TYPE_NUL;
 				} else if(str_in_funclist(tokens[i].identifier, master_state.functions) >= 0) {
 					variable* v ;
-					make_list(&v, tokens, i, line_num);
+					if(!make_list(&v, tokens, i, line_num)){
+						return 0;
+					}
 					
 					for(int j = 0; master_state.functions[j].f != NULL; j++){
 						
