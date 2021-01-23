@@ -232,6 +232,12 @@ int getvar(variable* var){
 	}
 }
 
+int copyvar(variable* out, variable in){
+	strcpy(out->identifier, in.identifier);
+	out->t = in.t;
+	out->value = in.value;
+}
+
 int make_list(variable** vars, token* tokens, int i, int line_num){
 	int len = 0;
 	int fname_index = i;
@@ -396,7 +402,8 @@ int tokenize(char* line, token** tokens){
 			/* set last_char_type accordingly */
 			last_char_type = LAST_OP;
 
-			if(line[i] == '=' && line[i+1] != '='){
+			if((line[i] == '=' && line[i+1] != '=') || line[i] == '(' || line[i] == ')' ||
+													   line[i] == '[' || line[i] == ']' ){
 				(*tokens)[current_token].identifier[current_character] = 0;
 				
 				current_character = 0;
@@ -801,21 +808,24 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 					return_value->t=TYPE_NUL;
 				} else if(str_in_funclist(tokens[i].identifier, master_state.functions) >= 0) {
 					variable* v ;
+					/* get arguements */
 					if(!make_list(&v, tokens, i, line_num)){
 						return 0;
 					}
 					
+					/* find function*/
 					for(int j = 0; master_state.functions[j].f != NULL; j++){
 						
 						if(strcmp(master_state.functions[j].identifier, tokens[i].identifier) == 0) {
-							master_state.functions[j].f(&v);
+							copyvar(return_value, master_state.functions[j].f(&v));
+							printf("%s\n", return_value->identifier);
 						}
 					}
+					/* free memory */
 					for(int j = 0; v[j].t = TYPE_NUL; j++ ){
 						free(v[j].identifier);
 					}
 					free(v);
-					return 0;
 				} else {
 					/* get value if it is a variable */
 					strcpy(return_value->identifier, tokens[i].identifier);
@@ -899,8 +909,9 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 					break;
 
 				} else if(strcmp(tokens[i].identifier, "[") == 0){
-					printf("Found list.\n");
-				}else if((strcmp(tokens[i].identifier, "+") == 0 ||
+					return_value->t = TYPE_ARRAY;
+
+				} else if((strcmp(tokens[i].identifier, "+") == 0 ||
 						(is_autoset = !strcmp(tokens[i].identifier, "+="))) && block == BLOCK_NONE) {
 
 					if (!add(tokens, return_value, line_num, i)){
