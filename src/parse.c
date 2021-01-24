@@ -237,7 +237,14 @@ int copyvar(variable* out, variable in){
 	out->t = in.t;
 	out->value = in.value;
 }
-
+int compatible_types(type t1, type t2){
+	if(t1 == t2)
+		return 1;
+	/* numbers are the same */
+	if(t1 >= TYPE_INT8 && t1 <= TYPE_INT64)
+		return 1;
+	return 0;
+}
 int make_list(variable** vars, token* tokens, int i, int line_num){
 	int len = 0;
 	int fname_index = i;
@@ -280,18 +287,19 @@ int make_list(variable** vars, token* tokens, int i, int line_num){
 			param_num++;
 			tokens[end].ttype = temp.ttype;
 			beginning = (tokens[k].identifier[0]==',')?k:beginning;
+			printf("%s (line num %d).\n", tokens[-1].identifier, beginning, end, line_num);
 		}
 	}
 	if(end == beginning || end == -1){
 		/* no closer, error */
-		printf("SyntaxError: Expected ')' (line num %d).\n", line_num);
+		printf("SyntaxError: Expected ')' %s %d %d (line num %d).\n", tokens[-1].identifier, beginning, end, line_num);
 		return 0;
-	} if(end == beginning+1){
+	} if(end == beginning+1 && strcmp(tokens[end].identifier, ")") != 0){
 		printf("SyntaxError: Expected statement after ',' (line num %d).\n", line_num);
 		return 0;
 	}
 	v[param_num].t = TYPE_NUL;
-	return 1;
+	return end;
 }
 
 /* Split line into main keywords and assign types */
@@ -333,7 +341,7 @@ int tokenize(char* line, token** tokens){
 				current_token++;
 				
 				/* allocate and set type */
-				(*tokens)[current_token].identifier = malloc(current_token);
+				(*tokens)[current_token].identifier = malloc(STR_SIZE);
 				(*tokens)[current_token].ttype = TOKEN_VAR;
 			} else if(last_char_type == LAST_NONE || last_char_type == LAST_WHITESPACE){
 				(*tokens)[current_token].ttype = TOKEN_VAR;
@@ -360,7 +368,7 @@ int tokenize(char* line, token** tokens){
 				current_character = 0;
 				current_token++;
 				
-				(*tokens)[current_token].identifier = malloc(current_token);
+				(*tokens)[current_token].identifier = malloc(STR_SIZE);
 			}
 			/* if the line hasn't started, add to indentation */
 			if(!line_started){
@@ -383,7 +391,7 @@ int tokenize(char* line, token** tokens){
 				current_character = 0;
 				current_token++;
 				
-				(*tokens)[current_token].identifier = malloc(current_token);
+				(*tokens)[current_token].identifier = malloc(STR_SIZE);
 				(*tokens)[current_token].ttype = TOKEN_OP;
 			}
 			
@@ -409,8 +417,8 @@ int tokenize(char* line, token** tokens){
 				current_character = 0;
 				current_token++;
 				
-				(*tokens)[current_token].identifier = malloc(current_token);
-				(*tokens)[current_token].ttype = TOKEN_VAR;
+				(*tokens)[current_token].identifier = malloc(STR_SIZE);
+				(*tokens)[current_token].ttype = TOKEN_OP;
 				
 			}
 			/* if it's a string, it's different*/
@@ -423,7 +431,7 @@ int tokenize(char* line, token** tokens){
 					current_character = 0;
 					current_token++;
 					
-					(*tokens)[current_token].identifier = malloc(current_token);
+					(*tokens)[current_token].identifier = malloc(STR_SIZE);
 					/* recopy the character */
 					(*tokens)[current_token].identifier[current_character] = line[i];
 					current_character++;
@@ -489,7 +497,7 @@ int add( token* tokens, variable* return_value, int line_num, int i){
 	master_state.stop_comparison =  temp_stop_comparison;
 	
 
-	if(rtemp.t != return_value->t){
+	if(!compatible_types(rtemp.t, return_value->t)){
 		printf("TypeError: rval and lval types don't match for '+'! (line num %d)\n",line_num);
 		return_value->value = 0;
 		return_value->t  = 0;
@@ -809,7 +817,8 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 				} else if(str_in_funclist(tokens[i].identifier, master_state.functions) >= 0) {
 					variable* v ;
 					/* get arguements */
-					if(!make_list(&v, tokens, i, line_num)){
+					int temp = make_list(&v, tokens, i, line_num);
+					if(!temp){
 						return 0;
 					}
 					
@@ -818,7 +827,6 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 						
 						if(strcmp(master_state.functions[j].identifier, tokens[i].identifier) == 0) {
 							copyvar(return_value, master_state.functions[j].f(&v));
-							printf("%s\n", return_value->identifier);
 						}
 					}
 					/* free memory */
@@ -826,6 +834,7 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 						free(v[j].identifier);
 					}
 					free(v);
+					i = temp;
 				} else {
 					/* get value if it is a variable */
 					strcpy(return_value->identifier, tokens[i].identifier);
@@ -913,7 +922,6 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 
 				} else if((strcmp(tokens[i].identifier, "+") == 0 ||
 						(is_autoset = !strcmp(tokens[i].identifier, "+="))) && block == BLOCK_NONE) {
-
 					if (!add(tokens, return_value, line_num, i)){
 						break;
 					}
@@ -1093,7 +1101,6 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 
 		return 0 ;	
 	}	
-
 }
 
 
@@ -1117,8 +1124,12 @@ int parse(char* line, variable* return_value, int line_num, int is_newline) {
 	}
 	
 	if(tokenize(line, &tokens)){
+		for(int i = 0; tokens[i].ttype != TOKEN_END; i++){
+			printf("%s\n", tokens[i].identifier);
+		}
 		parse_tokens(tokens, return_value, line_num);
 		for(int i = 0; tokens[i].ttype != TOKEN_END; i++){
+			printf("%s", tokens[i].identifier);
 			free(tokens[i].identifier);
 		}
 		free(tokens);

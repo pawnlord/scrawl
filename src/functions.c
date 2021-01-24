@@ -29,7 +29,11 @@ variable funcprint(variable** params_ref){
 variable functypeof(variable** params_ref){
     variable* params = *params_ref;
     for(int i = 0; params[i].t != TYPE_NUL; i++){
-        printf("%d\n", params[i].t);
+        variable v;
+        itoa(params[i].t, v.identifier, 10);
+        v.t = TYPE_INT16;
+        v.value = (void*)params[i].t;
+        return v;
     }
     variable v;
     v.identifier = "25";
