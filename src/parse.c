@@ -261,11 +261,6 @@ int make_list(variable** vars, token* tokens, int i, int line_num){
 	k = 0;
 	for(k = i+1; tokens[k].ttype != TOKEN_END; k++){
 		if(is_beginning){
-			if(strcmp(tokens[k].identifier, "()") == 0){
-				/* no parameters, leave */
-				end = 0;
-				break;
-			}
 			if(strcmp(tokens[k].identifier, "(") != 0){
 				/* no opener, error */
 				printf("SyntaxError: Expected '(' (line num %d).\n", line_num, tokens[k].identifier);
@@ -274,6 +269,11 @@ int make_list(variable** vars, token* tokens, int i, int line_num){
 			beginning = k;
 			is_beginning = 0;
 		}
+		else if(strcmp(tokens[k].identifier, "(") == 0 && !is_beginning){
+			while(strcmp(tokens[k].identifier, ")") != 0){
+				k++;
+			}
+		} 
 		else if(tokens[k].ttype == TOKEN_WHITESPACE){
 			if(strcmp(tokens[beginning].identifier, ",") == 0){
 				beginning = k;
@@ -287,14 +287,13 @@ int make_list(variable** vars, token* tokens, int i, int line_num){
 			param_num++;
 			tokens[end].ttype = temp.ttype;
 			beginning = (tokens[k].identifier[0]==',')?k:beginning;
-			printf("%s (line num %d).\n", tokens[-1].identifier, beginning, end, line_num);
 		}
 	}
 	if(end == beginning || end == -1){
 		/* no closer, error */
-		printf("SyntaxError: Expected ')' %s %d %d (line num %d).\n", tokens[-1].identifier, beginning, end, line_num);
+		printf("SyntaxError: Expected ')' %s %d %d (line num %d).\n", tokens[0].identifier, beginning, end, line_num);
 		return 0;
-	} if(end == beginning+1 && strcmp(tokens[end].identifier, ")") != 0){
+	} if(end == beginning+1 && (strcmp(tokens[beginning].identifier, "(") || strcmp(tokens[end].identifier, ")"))){
 		printf("SyntaxError: Expected statement after ',' (line num %d).\n", line_num);
 		return 0;
 	}
@@ -1124,12 +1123,8 @@ int parse(char* line, variable* return_value, int line_num, int is_newline) {
 	}
 	
 	if(tokenize(line, &tokens)){
-		for(int i = 0; tokens[i].ttype != TOKEN_END; i++){
-			printf("%s\n", tokens[i].identifier);
-		}
 		parse_tokens(tokens, return_value, line_num);
 		for(int i = 0; tokens[i].ttype != TOKEN_END; i++){
-			printf("%s", tokens[i].identifier);
 			free(tokens[i].identifier);
 		}
 		free(tokens);
