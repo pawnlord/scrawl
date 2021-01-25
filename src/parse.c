@@ -245,14 +245,13 @@ int compatible_types(type t1, type t2){
 		return 1;
 	return 0;
 }
-int make_list(variable** vars, token* tokens, int i, int line_num){
+int make_list(variable** vars, token* tokens, int i, int line_num, char* begc, char* endc){
 	int len = 0;
-	int fname_index = i;
 	int is_beginning = 1;
 	int beginning, end = -1, param_num = 0;
 	int k = 0;
 	for(k = i+1; tokens[k].ttype != TOKEN_END; k++){
-		if(strcmp(tokens[k].identifier, ",") == 0 || strcmp(tokens[k].identifier, ")") == 0){
+		if(strcmp(tokens[k].identifier, ",") == 0 || strcmp(tokens[k].identifier, endc) == 0){
 			len += 1;
 		}
 	}
@@ -261,16 +260,16 @@ int make_list(variable** vars, token* tokens, int i, int line_num){
 	k = 0;
 	for(k = i+1; tokens[k].ttype != TOKEN_END; k++){
 		if(is_beginning){
-			if(strcmp(tokens[k].identifier, "(") != 0){
+			if(strcmp(tokens[k].identifier, begc) != 0){
 				/* no opener, error */
-				printf("SyntaxError: Expected '(' (line num %d).\n", line_num, tokens[k].identifier);
+				printf("SyntaxError: Expected '%s' (line num %d).\n", begc, line_num);
 				return 0;
 			}
 			beginning = k;
 			is_beginning = 0;
 		}
-		else if(strcmp(tokens[k].identifier, "(") == 0 && !is_beginning){
-			while(strcmp(tokens[k].identifier, ")") != 0){
+		else if(strcmp(tokens[k].identifier, begc) == 0 && !is_beginning){
+			while(strcmp(tokens[k].identifier, endc) != 0){
 				k++;
 			}
 		} 
@@ -279,11 +278,11 @@ int make_list(variable** vars, token* tokens, int i, int line_num){
 				beginning = k;
 			}
 		}
-		else if(strcmp(tokens[k].identifier, ",") == 0 || strcmp(tokens[k].identifier, ")") == 0){
+		else if(strcmp(tokens[k].identifier, ",") == 0 || strcmp(tokens[k].identifier, endc) == 0){
 			end = k;
 			token temp = tokens[end];
 			tokens[end].ttype = TOKEN_END;
-			parse_tokens(tokens+beginning, &(v[param_num]), line_num);
+			parse_tokens(tokens+beginning+1, &(v[param_num]), line_num);
 			param_num++;
 			tokens[end].ttype = temp.ttype;
 			beginning = (tokens[k].identifier[0]==',')?k:beginning;
@@ -291,9 +290,9 @@ int make_list(variable** vars, token* tokens, int i, int line_num){
 	}
 	if(end == beginning || end == -1){
 		/* no closer, error */
-		printf("SyntaxError: Expected ')' %s %d %d (line num %d).\n", tokens[0].identifier, beginning, end, line_num);
+		printf("SyntaxError: Expected '%s' %d(line num %d).\n", endc, end, line_num);
 		return 0;
-	} if(end == beginning+1 && (strcmp(tokens[beginning].identifier, "(") || strcmp(tokens[end].identifier, ")"))){
+	} if(end == beginning+1 && (strcmp(tokens[beginning].identifier, begc) || strcmp(tokens[end].identifier, endc))){
 		printf("SyntaxError: Expected statement after ',' (line num %d).\n", line_num);
 		return 0;
 	}
@@ -492,12 +491,15 @@ int add( token* tokens, variable* return_value, int line_num, int i){
 	int temp_stop_comparison = master_state.stop_comparison;
 
 	master_state.stop_comparison = 1;
+	while(strcmp(tokens[i+1].identifier, "") == 0){
+		i++;
+	}
 	parse_tokens(tokens+i+1, &rtemp, line_num);
 	master_state.stop_comparison =  temp_stop_comparison;
 	
 
 	if(!compatible_types(rtemp.t, return_value->t)){
-		printf("TypeError: rval and lval types don't match for '+'! (line num %d)\n",line_num);
+		printf("TypeError: rval and lval types don't match for '+'! (line num %d)\n", line_num);
 		return_value->value = 0;
 		return_value->t  = 0;
 
@@ -523,7 +525,7 @@ int add( token* tokens, variable* return_value, int line_num, int i){
 		sprintf(return_value->identifier, "%d", (int)return_value->value + (int)rtemp.value);
 		return_value->value = (void*)((int)rtemp.value + (int)return_value->value);
 	} else {
-		printf("TypeError: type %d unimplement for '+'! (line num %d)\n", return_value->t, line_num);
+		printf("TypeError: type %d unimplemented for '+'! (line num %d)\n", return_value->t, line_num);
 		
 		return_value->value = 0;
 		return_value->t  = 0;
@@ -816,7 +818,7 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 				} else if(str_in_funclist(tokens[i].identifier, master_state.functions) >= 0) {
 					variable* v ;
 					/* get arguements */
-					int temp = make_list(&v, tokens, i, line_num);
+					int temp = make_list(&v, tokens, i, line_num, "(", ")");
 					if(!temp){
 						return 0;
 					}
@@ -918,7 +920,14 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 
 				} else if(strcmp(tokens[i].identifier, "[") == 0){
 					return_value->t = TYPE_ARRAY;
-
+					variable* v;
+					int temp = make_list(&v, tokens, i-1, line_num, "[", "]");
+					if(!temp){
+						return 0;
+					}
+					return_value->value = (void*)v; // TODO: free if replaced
+					strcpy(return_value->identifier, "[...]"); // TODO: make an actual identifier.
+					i = temp;
 				} else if((strcmp(tokens[i].identifier, "+") == 0 ||
 						(is_autoset = !strcmp(tokens[i].identifier, "+="))) && block == BLOCK_NONE) {
 					if (!add(tokens, return_value, line_num, i)){

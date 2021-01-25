@@ -18,6 +18,9 @@ variable funcprint(variable** params_ref){
             printf("%s\n", params[i].value>0?"true":"false");
         } else if (params[i].t == TYPE_STRING){
             printf("%s\n", (char*)params[i].value);
+        } else if (params[i].t == TYPE_ARRAY){
+            variable* v = (variable*)params[i].value;
+            funcprint(&v);
         }
     }
     variable v;
@@ -30,7 +33,8 @@ variable functypeof(variable** params_ref){
     variable* params = *params_ref;
     for(int i = 0; params[i].t != TYPE_NUL; i++){
         variable v;
-        itoa(params[i].t, v.identifier, 10);
+        v.identifier = malloc(10);
+        sprintf(v.identifier, "%d", params[i].t);
         v.t = TYPE_INT16;
         v.value = (void*)params[i].t;
         return v;
