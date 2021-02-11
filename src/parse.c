@@ -148,12 +148,10 @@ void initialize_states(int max_varnum, int max_connum, int max_block, volatile i
 	master_state.functions = (function_t*)(malloc(255*sizeof(function_t)));
 	/* #region: bind all functions */
 	make_function(&master_state.functions[0], funcprint, NULL, "print"); /* TODO: REMEMBER THAT NULL MEANS IT TAKES ALL POSSIBLE ARGUEMENTS*/
-	
 	make_function(&master_state.functions[1], funcsystem, NULL, "system"); /* TODO: REMEMBER THAT NULL MEANS IT TAKES ALL POSSIBLE ARGUEMENTS*/
-	
 	make_function(&master_state.functions[2], functypeof, NULL, "typeof"); /* TODO: REMEMBER THAT NULL MEANS IT TAKES ALL POSSIBLE ARGUEMENTS*/
-	
-	make_function(&master_state.functions[3], (function)NULL, NULL, ""); /* TODO: REMEMBER THAT NULL MEANS IT TAKES ALL POSSIBLE ARGUEMENTS*/
+	make_function(&master_state.functions[3], funcarray, NULL, "array"); /* TODO: REMEMBER THAT NULL MEANS IT TAKES ALL POSSIBLE ARGUEMENTS*/
+	make_function(&master_state.functions[4], (function)NULL, NULL, ""); /* TODO: REMEMBER THAT NULL MEANS IT TAKES ALL POSSIBLE ARGUEMENTS*/
 	/* #endregion: bind all functions */
 }
 
