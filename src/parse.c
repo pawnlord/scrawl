@@ -47,7 +47,6 @@ void clear_strptr(char*** strptr) {
 
 void init_variable(variable* var, int name_size){
 	var->identifier = malloc(name_size);
-
 	for(int i = 0; i < name_size; i++){
 		var->identifier[i] = 0;
 	}
@@ -147,11 +146,12 @@ void initialize_states(int max_varnum, int max_connum, int max_block, volatile i
 	master_state.exit_loop= exit_loop;
 	master_state.functions = (function_t*)(malloc(255*sizeof(function_t)));
 	/* #region: bind all functions */
-	make_function(&master_state.functions[0], funcprint, NULL, "print"); /* TODO: REMEMBER THAT NULL MEANS IT TAKES ALL POSSIBLE ARGUEMENTS*/
-	make_function(&master_state.functions[1], funcsystem, NULL, "system"); /* TODO: REMEMBER THAT NULL MEANS IT TAKES ALL POSSIBLE ARGUEMENTS*/
-	make_function(&master_state.functions[2], functypeof, NULL, "typeof"); /* TODO: REMEMBER THAT NULL MEANS IT TAKES ALL POSSIBLE ARGUEMENTS*/
-	make_function(&master_state.functions[3], funcarray, NULL, "array"); /* TODO: REMEMBER THAT NULL MEANS IT TAKES ALL POSSIBLE ARGUEMENTS*/
-	make_function(&master_state.functions[4], (function)NULL, NULL, ""); /* TODO: REMEMBER THAT NULL MEANS IT TAKES ALL POSSIBLE ARGUEMENTS*/
+	make_function(&master_state.functions[0], funcprint,"print"); /* TODO: REMEMBER THAT NULL MEANS IT TAKES ALL POSSIBLE ARGUEMENTS*/
+	make_function(&master_state.functions[1], funcsystem,"system"); /* TODO: REMEMBER THAT NULL MEANS IT TAKES ALL POSSIBLE ARGUEMENTS*/
+	make_function(&master_state.functions[2], functypeof,"typeof"); /* TODO: REMEMBER THAT NULL MEANS IT TAKES ALL POSSIBLE ARGUEMENTS*/
+	make_function(&master_state.functions[3], funcarray, "array"); /* TODO: REMEMBER THAT NULL MEANS IT TAKES ALL POSSIBLE ARGUEMENTS*/
+	make_function(&master_state.functions[4], funcset, "set"); /* TODO: REMEMBER THAT NULL MEANS IT TAKES ALL POSSIBLE ARGUEMENTS*/
+	make_function(&master_state.functions[5], (function)NULL,""); /* TODO: REMEMBER THAT NULL MEANS IT TAKES ALL POSSIBLE ARGUEMENTS*/
 	/* #endregion: bind all functions */
 }
 
@@ -407,7 +407,8 @@ int tokenize(char* line, token** tokens){
 			last_char_type = LAST_OP;
 
 			if((line[i] == '=' && line[i+1] != '=') || line[i] == '(' || line[i] == ')' ||
-													   line[i] == '[' || line[i] == ']' ){
+													   line[i] == '[' || line[i] == ']' ||
+													   line[i] == ','){
 				(*tokens)[current_token].identifier[current_character] = 0;
 				
 				current_character = 0;
@@ -917,15 +918,52 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 					break;
 
 				} else if(strcmp(tokens[i].identifier, "[") == 0){
-					return_value->t = TYPE_ARRAY;
-					variable* v;
-					int temp = make_list(&v, tokens, i-1, line_num, "[", "]");
-					if(!temp){
-						return 0;
+					if(i == 0 || tokens[i-1].ttype != TOKEN_VAR){
+						return_value->t = TYPE_ARRAY;
+						variable* v;
+						int temp = make_list(&v, tokens, i-1, line_num, "[", "]");
+						if(!temp){
+							return 0;
+						}
+						return_value->value = (void*)v; // TODO: free if replaced
+						strcpy(return_value->identifier, "[...]"); // TODO: make an actual identifier.
+						i = temp;
+					} else {
+						int end = -1;
+						int j = 0;
+						while(tokens[j].ttype != TOKEN_END){
+							if(strcmp(tokens[j].identifier, "]") == 0){
+								end = j;
+							} else if (tokens[j].ttype == TOKEN_VAR && end != -1){
+								break;
+							}
+							j++;
+						}
+						if(end == -1){
+							/* no block, error */
+							printf("SyntaxError: Expected ']' (line num %d).\n", line_num);
+							return 0;
+						}
+						getvar(return_value);
+						if(return_value->t != 6){
+							printf("SyntaxError: Expected Array, got %d (line num %d).\n", return_value->t, line_num);
+							return 0;	
+						}
+						int index = 0;
+						
+						variable index_var;
+						index_var.t = TYPE_NUL;
+						init_variable(&index_var, 1);
+
+						token temp = tokens[end];
+						tokens[end].ttype = TOKEN_END;
+						parse_tokens(tokens+i+1, &index_var, line_num);
+						
+						index = (int)(index_var.value);
+						return_value->t = (((variable*)return_value->value)[index]).t;
+						return_value->value = (((variable*)return_value->value)[index]).value;
+						i = end;
 					}
-					return_value->value = (void*)v; // TODO: free if replaced
-					strcpy(return_value->identifier, "[...]"); // TODO: make an actual identifier.
-					i = temp;
 				} else if((strcmp(tokens[i].identifier, "+") == 0 ||
 						(is_autoset = !strcmp(tokens[i].identifier, "+="))) && block == BLOCK_NONE) {
 					if (!add(tokens, return_value, line_num, i)){

@@ -2,11 +2,33 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 
-void make_function(function_t* ft, function f, variable** params, char* identifier){
+void make_function(function_t* ft, function f, char* identifier){
     ft->f = f;
-    ft->params = params;
     ft->identifier = identifier;
+}
+type upgradetype(type t){
+	if(t == TYPE_INT8 || t == TYPE_INT16 || t == TYPE_INT32 || t == TYPE_INT64 ){
+		return TYPE_INT64;
+	}
+	return t;
+}
+
+
+int checkargs(variable* params, int count, ...){
+    va_list ts;
+    va_start(ts, count);
+    int i;
+    for(i = 0; i < count; i++){
+        type t = va_arg(ts, type);
+        if(upgradetype(params[i].t) != t && t != TYPE_UNKNOWN){
+            return 0;
+        }
+    }
+    if(params[i].t != TYPE_NUL){ return 0;}
+    return 1;
+
 }
 
 variable funcprint(variable** params_ref){
@@ -90,5 +112,20 @@ variable funcarray(variable** params_ref){
         ((variable*)v.value)[i].identifier = malloc(255);
         strcpy(((variable*)v.value)[i].identifier, "");
     }
+    return v;
+}
+
+variable funcset(variable** params_ref){
+    variable* params = *params_ref;
+    int size = 0;
+    checkargs(params, 2, TYPE_ARRAY, TYPE_INT64, TYPE_UNKNOWN);
+    variable* arr = (variable*)params[0].value;
+    arr[(int)(params[1].value)].value = params[2].value;
+    arr[(int)(params[1].value)].t = params[2].t;
+    
+    variable v;
+    v.identifier = "";
+    v.t = TYPE_NUL;
+    v.value = 0;
     return v;
 }
