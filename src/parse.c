@@ -737,6 +737,7 @@ int run_if(token* tokens, variable* return_value, int line_num){
 
 	variable evaled_expression;
 	parse_tokens(if_tokens+1, &evaled_expression, if_line_number);
+	if_tokens[i-1].ttype = TOKEN_OP;
 	
 	master_state.block_level = temp_level;
 	
@@ -789,6 +790,7 @@ int run_while(token* tokens, variable* return_value, int line_num){
 		
 	} 
 
+	while_tokens[i-1].ttype = TOKEN_OP;
 	free(while_line);
 	return 1;
 }
@@ -1138,7 +1140,7 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 	
 	if(block != BLOCK_NONE && strcmp(tokens[i-1].identifier, ":")){
 		/* TODO: don't do this */
-		printf("SyntaxError: Invalid block syntax (line num %d)\n", line_num);
+		printf("SyntaxError: Invalid block syntax %d (line num %d)\n", tokens[i].ttype, line_num);
 		
 		return_value->value = 0;
 		return_value->t  = 0;
@@ -1168,6 +1170,9 @@ int parse(char* line, variable* return_value, int line_num, int is_newline) {
 	}
 	
 	if(tokenize(line, &tokens)){
+		for(int i = 0; tokens[i-1].ttype != TOKEN_END; i++){
+			printf("%s : %d\n", tokens[i].identifier, tokens[i].ttype);
+		}
 		parse_tokens(tokens, return_value, line_num);
 		for(int i = 0; tokens[i].ttype != TOKEN_END; i++){
 			free(tokens[i].identifier);
