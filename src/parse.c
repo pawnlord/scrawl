@@ -718,7 +718,6 @@ int run_if(token* tokens, variable* return_value, int line_num){
 	
 	token* if_tokens;
 	tokenize(if_line, &if_tokens);
-	
 	int i;
 	for(i = 0; if_tokens[i].ttype != TOKEN_END; i++);
 	
@@ -736,12 +735,11 @@ int run_if(token* tokens, variable* return_value, int line_num){
 	master_state.block_level = 0;
 
 	variable evaled_expression;
-	parse_tokens(if_tokens+1, &evaled_expression, if_line_number);
-	if_tokens[i-1].ttype = TOKEN_OP;
-	
+	parse_tokens(if_tokens+1+(temp_level>0), &evaled_expression, if_line_number);
 	master_state.block_level = temp_level;
 	
 	if(evaled_expression.value){
+		printf("%d\n", evaled_expression.value);
 		variable ret;
 		for (int i = if_line_number+1; i < line_num; i++){
 			parse(master_state.lines[i], &ret, i, 0);
@@ -779,9 +777,10 @@ int run_while(token* tokens, variable* return_value, int line_num){
 	variable evaled_expression;
 	variable ret;
 	parse_tokens(while_tokens+1, &evaled_expression, while_line_number);
+	master_state.block_level = temp_level;
+	
 	while(evaled_expression.value && !(*master_state.exit_loop)){
 		
-		master_state.block_level = temp_level;
 	
 		for (int i = while_line_number+1; i < line_num; i++){
 			parse(master_state.lines[i], &ret, i, 0);
@@ -1114,33 +1113,34 @@ int parse_tokens(token* tokens, variable* return_value, int line_num){
 			/* 2 possibilities: 
 			* - correct end of block
 			* - end of block too early */
-			if(master_state.indent_unit == 0 || temp_lastindent/master_state.indent_unit < master_state.block_level){
-				/* unindent too early */
-				printf("IndentError: need body to block (line num %d)\n", line_num);
-
-				return_value->value = 0;
-				return_value->t  = 0;
-
-				return 0;
-			} else {
-
-				master_state.running_block = 1;
-				if(master_state.block_types[master_state.block_level] == BLOCK_IF){
-					run_if(tokens, return_value, line_num);
-				}
+			// if((master_state.indent_unit == 0 || temp_lastindent/master_state.indent_unit < master_state.block_level) && master_state.running_block){
+			// 	/* unindent too early */
+			// 	printf("IndentError: need body to block %d (line num %d)\n", master_state.block_level, line_num);
 				
-				if(master_state.block_types[master_state.block_level] == BLOCK_WHILE){
-					run_while(tokens, return_value, line_num);
-				}
-				master_state.block_level-=1;
+
+			// 	return_value->value = 0;
+			// 	return_value->t  = 0;
+
+			// 	return 0;
+			// } else {
+			/* this code has not worked, but might be useful */
+			master_state.running_block = 1;
+			if(master_state.block_types[master_state.block_level] == BLOCK_IF){
+				run_if(tokens, return_value, line_num);
 			}
+			
+			if(master_state.block_types[master_state.block_level] == BLOCK_WHILE){
+				run_while(tokens, return_value, line_num);
+			}
+			master_state.block_level-=1;
+			
 			parse_tokens(tokens, return_value, line_num);
 		}
 	}
 	
 	if(block != BLOCK_NONE && strcmp(tokens[i-1].identifier, ":")){
 		/* TODO: don't do this */
-		printf("SyntaxError: Invalid block syntax %d (line num %d)\n", tokens[i].ttype, line_num);
+		printf("SyntaxError: Invalid block syntax (line num %d)\n", line_num);
 		
 		return_value->value = 0;
 		return_value->t  = 0;
@@ -1170,9 +1170,6 @@ int parse(char* line, variable* return_value, int line_num, int is_newline) {
 	}
 	
 	if(tokenize(line, &tokens)){
-		for(int i = 0; tokens[i-1].ttype != TOKEN_END; i++){
-			printf("%s : %d\n", tokens[i].identifier, tokens[i].ttype);
-		}
 		parse_tokens(tokens, return_value, line_num);
 		for(int i = 0; tokens[i].ttype != TOKEN_END; i++){
 			free(tokens[i].identifier);

@@ -101,15 +101,17 @@ int main(int argc, char** argv){
 
 		FILE* fp = fopen(filename, "r");
 		int linenum = readlinen(fp);
-		printf("%d\n", linenum);
+
 		if(linenum == 0){
 			printf("Error: file either does not exist or is empty");
 			return 1;
 		}
+
 		char** buff = malloc(linenum);
 		for(int i = 0; i < linenum; i++){
 			buff[i] = malloc(200);
 		}
+
 		readfile(fp, buff);
 		start_parser(exit_loop);
 		for(int i = 0; i < linenum && strcmp(buff[i], "exit") && !(*exit_loop); i++){
@@ -117,6 +119,7 @@ int main(int argc, char** argv){
 			rv.t = TYPE_NUL;
 			parse(buff[i], &rv, i, 1);
 		}
+
 		stop_parser();
 		fclose(fp);
 	}
