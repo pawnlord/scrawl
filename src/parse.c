@@ -735,11 +735,10 @@ int run_if(token* tokens, variable* return_value, int line_num){
 	master_state.block_level = 0;
 
 	variable evaled_expression;
-	parse_tokens(if_tokens+1+(temp_level>0), &evaled_expression, if_line_number);
+	parse_tokens(if_tokens+1+(temp_level>1), &evaled_expression, if_line_number);
 	master_state.block_level = temp_level;
 	
 	if(evaled_expression.value){
-		printf("%d\n", evaled_expression.value);
 		variable ret;
 		for (int i = if_line_number+1; i < line_num; i++){
 			parse(master_state.lines[i], &ret, i, 0);
